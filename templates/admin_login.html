@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Admin - PS.Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0010;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .login-box {
+            background: #0f0018;
+            border: 1px solid #6b00c8;
+            padding: 40px 30px;
+            width: 320px;
+            text-align: center;
+            box-shadow: 0 0 30px #7c3aed40;
+        }
+        h2 {
+            color: #c084fc;
+            font-family: 'Orbitron', monospace;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 100%;
+            background: #0a0015;
+            border: 1px solid #6b00c8;
+            color: #e9d5ff;
+            padding: 12px;
+            margin: 15px 0;
+            font-family: monospace;
+            outline: none;
+        }
+        input:focus {
+            border-color: #c084fc;
+            box-shadow: 0 0 8px #a855f7;
+        }
+        button {
+            background: transparent;
+            border: 1px solid #c084fc;
+            color: #c084fc;
+            padding: 10px 20px;
+            width: 100%;
+            cursor: pointer;
+            font-family: monospace;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #6b00c820;
+            box-shadow: 0 0 15px #c084fc;
+        }
+        .erro {
+            color: #f87171;
+            margin-top: 15px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2>👾 PS.Chat Admin</h2>
+        <form method="post">
+            <input type="password" name="senha" placeholder="Senha" autofocus>
+            <button type="submit">Entrar</button>
+        </form>
+        {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+    </div>
+</body>
+</html>

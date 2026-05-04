@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>PS.Admin — Controle de Salas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0010;
+            color: #d8b4fe;
+            font-family: 'Share Tech Mono', monospace;
+            padding: 20px;
+        }
+        ::selection { background: #6b00c840; }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #6b00c8;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            color: #c084fc;
+            text-shadow: 0 0 12px #a855f7;
+            letter-spacing: 2px;
+        }
+        .logo span { color: #a855f7; }
+        .badge {
+            border: 1px solid #9b30ff;
+            padding: 5px 12px;
+            font-size: 0.7rem;
+            background: #110020;
+        }
+        .btn {
+            font-family: 'Share Tech Mono', monospace;
+            background: transparent;
+            border: 1px solid #6b00c8;
+            color: #d8b4fe;
+            padding: 6px 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.75rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            border-color: #c084fc;
+            box-shadow: 0 0 12px #7c3aed40;
+            color: white;
+        }
+        .btn-primary {
+            border-color: #c084fc;
+            color: #c084fc;
+        }
+        .btn-danger {
+            border-color: #f87171;
+            color: #f87171;
+        }
+        .btn-warning {
+            border-color: #fbbf24;
+            color: #fbbf24;
+        }
+        .form-criar {
+            background: #0f0018;
+            border: 1px solid #6b00c850;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        label {
+            display: block;
+            font-size: 0.65rem;
+            color: #7c3aed;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        input {
+            background: #0a0015;
+            border: 1px solid #6b00c8;
+            color: #e9d5ff;
+            padding: 8px;
+            width: 100%;
+            font-family: monospace;
+            outline: none;
+        }
+        input:focus {
+            border-color: #c084fc;
+            box-shadow: 0 0 8px #a855f7;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 8px;
+            border-bottom: 1px solid #6b00c830;
+        }
+        th {
+            color: #c084fc;
+            font-weight: normal;
+            letter-spacing: 1px;
+        }
+        .status-online {
+            color: #4ade80;
+            text-shadow: 0 0 4px #4ade80;
+        }
+        .token-copy {
+            font-family: monospace;
+            background: #110020;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        .qr-btn {
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #110020;
+            border: 1px solid #c084fc;
+            padding: 8px 16px;
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: 0.2s;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .corner {
+            position: fixed;
+            bottom: 8px;
+            left: 16px;
+            font-size: 0.65rem;
+            color: #6b00c870;
+            font-family: monospace;
+        }
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            th, td { font-size: 0.7rem; padding: 8px 4px; }
+            .btn { padding: 4px 10px; font-size: 0.7rem; }
+            .form-criar { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="logo">👾 PS.<span>ADMIN</span> — ROOM CONTROLLER</div>
+        <div class="header-buttons">
+            <a href="/admin/alterar_senha" class="btn btn-warning">🔑 ALTERAR SENHA</a>
+            <a href="/admin/logout" class="btn">🚪 SAIR</a>
+            <div class="badge">⚡ ONLINE | v2.0</div>
+        </div>
+    </header>
+
+    <div class="form-criar">
+        <div class="form-group">
+            <label>📛 NOME DA SALA</label>
+            <input type="text" id="nomeSala" placeholder="ex: Equipe Vermelha">
+        </div>
+        <button class="btn btn-primary" id="criarBtn">+ CRIAR SALA</button>
+    </div>
+
+    <div style="margin-bottom: 15px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <span>📋 SALAS ATIVAS (<span id="totalSalas">0</span>)</span>
+        <button class="btn" id="refreshBtn">⟳ ATUALIZAR</button>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table id="tabelaSalas">
+            <thead>
+                <tr><th>TOKEN</th><th>NOME</th><th>USUÁRIOS</th><th>CRIADO EM</th><th>AÇÕES</th></tr>
+            </thead>
+            <tbody id="listaSalas"></tbody>
+        </table>
+    </div>
+</div>
+<div id="toast" class="toast"></div>
+<div class="corner">PSECURITY // ADMIN CONSOLE // v2.0</div>
+
+<script>
+    async function fetchSalas() {
+        const res = await fetch('/admin/listar_salas');
+        if (!res.ok) {
+            if (res.status === 401 || res.status === 302) {
+                window.location.href = '/admin/login';
+                return [];
+            }
+            showToast("Erro ao buscar salas");
+            return [];
+        }
+        return await res.json();
+    }
+
+    async function renderSalas() {
+        const salas = await fetchSalas();
+        const tbody = document.getElementById("listaSalas");
+        document.getElementById("totalSalas").innerText = salas.length;
+        if (salas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#7c3aed;">Nenhuma sala ativa</td></tr>';
+            return;
+        }
+        tbody.innerHTML = salas.map(s => `
+            <tr>
+                <td><span class="token-copy" onclick="copyToken('${s.token}')">📋 ${s.token}</span></td>
+                <td>${escapeHtml(s.nome)}</td>
+                <td class="status-online">${s.usuarios} conectado(s)</td>
+                <td>${new Date(s.criado_em * 1000).toLocaleString()}</td>
+                <td>
+                    <button class="btn btn-primary qr-btn" onclick="gerarQR('${s.token}')" title="QR Code">📲 QR</button>
+                    <button class="btn btn-danger" onclick="excluirSala('${s.token}')">🗑 FECHAR</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function criarSala() {
+        const nome = document.getElementById("nomeSala").value.trim();
+        if (!nome) { showToast("Digite um nome para a sala"); return; }
+        const res = await fetch('/admin/criar_sala', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nome: nome})
+        });
+        if (res.ok) {
+            const data = await res.json();
+            showToast(`✅ Sala "${data.nome}" criada! Token: ${data.token}`);
+            document.getElementById("nomeSala").value = '';
+            renderSalas();
+        } else {
+            showToast("❌ Erro ao criar sala");
+        }
+    }
+
+    async function excluirSala(token) {
+        if (!confirm(`Tem certeza que deseja encerrar a sala ${token}? Todos os usuários serão desconectados.`)) return;
+        const res = await fetch(`/admin/excluir_sala/${token}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast(`🗑 Sala ${token} encerrada.`);
+            renderSalas();
+        } else {
+            showToast("❌ Falha ao excluir");
+        }
+    }
+
+    function copyToken(token) {
+        navigator.clipboard.writeText(token);
+        showToast(`📋 Token ${token} copiado!`);
+    }
+
+    function gerarQR(token) {
+        const url = `${window.location.origin}/sala/${token}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
+        window.open(qrUrl, '_blank');
+        showToast(`📲 QR Code gerado para sala ${token}`);
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById("toast");
+        toast.innerText = msg;
+        toast.style.opacity = "1";
+        setTimeout(() => toast.style.opacity = "0", 2500);
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    document.getElementById("criarBtn").onclick = criarSala;
+    document.getElementById("refreshBtn").onclick = renderSalas;
+    renderSalas();
+    setInterval(renderSalas, 8000);
+</script>
+</body>
+</html>

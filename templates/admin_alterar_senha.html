@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alterar Senha - PS.Chat Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0010;
+            font-family: 'Share Tech Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: #0f0018;
+            border: 1px solid #6b00c8;
+            padding: 30px;
+            width: 360px;
+            box-shadow: 0 0 30px #7c3aed40;
+        }
+        h2 {
+            color: #c084fc;
+            text-align: center;
+            margin-bottom: 20px;
+            font-family: 'Orbitron', monospace;
+        }
+        label {
+            display: block;
+            font-size: 0.7rem;
+            color: #7c3aed;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            background: #0a0015;
+            border: 1px solid #6b00c8;
+            color: #e9d5ff;
+            padding: 10px;
+            font-family: monospace;
+            outline: none;
+        }
+        input:focus {
+            border-color: #c084fc;
+            box-shadow: 0 0 8px #a855f7;
+        }
+        button {
+            width: 100%;
+            background: transparent;
+            border: 1px solid #c084fc;
+            color: #c084fc;
+            padding: 10px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-family: monospace;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #6b00c820;
+            box-shadow: 0 0 15px #c084fc;
+        }
+        .erro {
+            color: #f87171;
+            font-size: 0.7rem;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .link-voltar {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.7rem;
+            color: #6b00c8;
+            text-decoration: none;
+        }
+        .link-voltar:hover {
+            color: #c084fc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 Alterar Senha</h2>
+        <form method="post">
+            <label>Senha atual</label>
+            <input type="password" name="senha_atual" required autofocus>
+            <label>Nova senha (mínimo 6 caracteres)</label>
+            <input type="password" name="nova_senha" required>
+            <label>Confirmar nova senha</label>
+            <input type="password" name="confirmar_senha" required>
+            <button type="submit">Alterar Senha</button>
+        </form>
+        {% if erro %}
+            <div class="erro">{{ erro }}</div>
+        {% endif %}
+        <a href="/admin" class="link-voltar">← Voltar ao painel</a>
+    </div>
+</body>
+</html>

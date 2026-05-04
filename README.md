@@ -47,12 +47,12 @@ pip install -r requirements.txt
 ```
 
 **Dependências:**
-
+```
 · flask==2.3.3
 · flask-socketio==5.3.4
 · eventlet==0.33.3
 · zeroconf==0.131.0
-
+```
 **3. Execute o servidor**
 
 ```bash

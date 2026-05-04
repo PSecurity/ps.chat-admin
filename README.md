@@ -79,7 +79,8 @@ python ps.chat-adm.py
    ```
    http://localhost:5000/admin/login
    ```
-**2.** Faça login com a senha (padrão: PeekAdmin2025)
+**2.** Faça login com a senha (padrão: `PeekAdmin2025`)
+
 **3.** No painel:
 
    · Criar sala – digite um nome e clique em "CRIAR SALA"

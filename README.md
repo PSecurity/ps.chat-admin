@@ -40,7 +40,7 @@ git clone https://github.com/PSecurity/ps.chat-admin
 cd ps.chat-admin
 ```
 
-2. Instale as dependências
+**2. Instale as dependências**
 
 ```bash
 pip install -r requirements.txt
@@ -49,8 +49,11 @@ pip install -r requirements.txt
 Dependências:
 
 · flask==2.3.3
+
 · flask-socketio==5.3.4
+
 · eventlet==0.33.3
+
 · zeroconf==0.131.0
 
 3. Execute o servidor

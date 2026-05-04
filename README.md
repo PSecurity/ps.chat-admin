@@ -67,7 +67,7 @@ python ps.chat-adm.py
 🔐 Senha padrão: PeekAdmin2025
 ```
 
-## ⚠️ Altere a senha imediatamente após o primeiro acesso no painel admin!
+**⚠️ Altere a senha imediatamente após o primeiro acesso no painel admin!**
 
 ---
 

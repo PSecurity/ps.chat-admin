@@ -73,30 +73,31 @@ python ps.chat-adm.py
 
 ## 📖 Como usar
 
-Acessar como administrador
+**Acessar como administrador**
 
-1. No navegador (do mesmo dispositivo que roda o servidor), acesse:
+**1.** No navegador (do mesmo dispositivo que roda o servidor), acesse:
    ```
    http://localhost:5000/admin/login
    ```
-2. Faça login com a senha (padrão: PeekAdmin2025)
-3. No painel:
+**2.** Faça login com a senha (padrão: PeekAdmin2025)
+**3.** No painel:
    · Criar sala – digite um nome e clique em "CRIAR SALA"
    · Copiar token – clique no token para copiar
    · QR Code – clique em "QR" para gerar código de acesso
    · Fechar sala – encerra a sala e desconecta todos os usuários
-4. Alterar senha – acesse "ALTERAR SENHA" no cabeçalho
+**4.** Alterar senha – acesse "ALTERAR SENHA" no cabeçalho
 
 Usuários acessarem uma sala
 
-Opções para os participantes:
+**Opções para os participantes:**
 
-Método Como fazer
+**Método Como fazer**
+```
 Link direto http://<IP_DO_SERVIDOR>:5000/sala/<TOKEN>
 Tela de entrada http://<IP_DO_SERVIDOR>:5000/ + digitar token
 QR Code Escanear o QR gerado pelo admin
 Cliente Python Usar ps.chat-cli.py do repositório cliente
-
+```
 ---
 
 ## 🧩 Estrutura do projeto

@@ -81,10 +81,15 @@ python ps.chat-adm.py
    ```
 **2.** Faça login com a senha (padrão: PeekAdmin2025)
 **3.** No painel:
+
    · Criar sala – digite um nome e clique em "CRIAR SALA"
+   
    · Copiar token – clique no token para copiar
+   
    · QR Code – clique em "QR" para gerar código de acesso
+   
    · Fechar sala – encerra a sala e desconecta todos os usuários
+   
 **4.** Alterar senha – acesse "ALTERAR SENHA" no cabeçalho
 
 Usuários acessarem uma sala
@@ -140,7 +145,7 @@ python ps.chat-mdns.py &
 
 **Resetar senha do admin**
 
-**Delete o arquivo admin.hash e reinicie o servidor:**
+**Delete o arquivo `admin.hash` e reinicie o servidor:**
 
 ```bash
 rm admin.hash
@@ -163,54 +168,60 @@ Mensagens não aparecem Abra o console do navegador (F12) e veja se há erros Ja
 ```
 ---
 
-📡 Como outros dispositivos encontram o servidor?
+## 📡 Como outros dispositivos encontram o servidor?
 
-Opção 1 (manual): Informe o IP do servidor. No Termux, execute ifconfig ou ip a.
+**Opção 1** (manual): Informe o IP do servidor. No Termux, execute ifconfig ou ip a.
 
-Opção 2 (automática com mDNS): O servidor se anuncia na rede como PS.Chat._pschat._tcp.local. Clientes com zeroconf (ex: ps.chat-cli.py) detectam automaticamente.
+**Opção 2** (automática com mDNS): O servidor se anuncia na rede como PS.Chat._pschat._tcp.local. Clientes com zeroconf (ex: `ps.chat-cli.py`) detectam automaticamente.
 
 ---
 
-🔒 Segurança
+## 🔒 Segurança
 
 · Senha admin armazenada com hash (werkzeug/scrypt)
+
 · Tokens de sala gerados com secrets.token_hex(4) (criptograficamente seguros)
+
 · Logs detalhados de acesso
+
 · As mensagens trafegam em texto plano – para ambientes confidenciais, use HTTPS + autenticação adicional
 
 ---
 
-🧪 Testado em
+## 🧪 Testado em
 
-Plataforma Navegador Status
-Termux (Android 12+) Chrome, Kiwi Browser, Firefox ✅
-Ubuntu 22.04 Firefox, Chrome ✅
-Windows 11 (WSL) Edge, Chrome ✅
-macOS Safari, Chrome ✅
+| Plataforma           | Navegador                     | Status |
+| -------------------- | ----------------------------- | ------ |
+| Termux (Android 12+) | Chrome, Kiwi Browser, Firefox | ✅      |
+| Ubuntu 22.04         | Firefox, Chrome               | ✅      |
+| Windows 11 (WSL)     | Edge, Chrome                  | ✅      |
+| macOS                | Safari, Chrome                | ✅      |
+
 
 ---
 
-🤝 Contribuindo
-
+## 🤝 Contribuindo
+```
 1. Faça um fork do projeto
 2. Crie uma branch (git checkout -b feature/nova-feature)
 3. Commit suas alterações (git commit -m 'Adiciona nova feature')
 4. Push para a branch (git push origin feature/nova-feature)
 5. Abra um Pull Request
-
+```
 ---
 
-📄 Licença
+## 📄 Licença
 
 Distribuído sob a licença MIT. Veja LICENSE para mais informações.
 
 ---
 
-🙋 Suporte
+## 🙋 Suporte
 
 · Abra uma issue no GitHub Issues
+
 · Consulte o repositório cliente para scripts de acesso
 
 ---
 
-Desenvolvido por PeekSecurity – Comunicação offline, simples e segura.
+**Desenvolvido por `PeekSecurity` – Comunicação offline, simples e segura.**

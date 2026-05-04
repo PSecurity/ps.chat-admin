@@ -46,33 +46,30 @@ cd ps.chat-admin
 pip install -r requirements.txt
 ```
 
-Dependências:
+**Dependências:**
 
 · flask==2.3.3
-
 · flask-socketio==5.3.4
-
 · eventlet==0.33.3
-
 · zeroconf==0.131.0
 
-3. Execute o servidor
+**3. Execute o servidor**
 
 ```bash
 python ps.chat-adm.py
 ```
 
-Na primeira execução, o arquivo admin.hash será criado com a senha padrão:
+**Na primeira execução, o arquivo admin.hash será criado com a senha padrão:**
 
 ```
 🔐 Senha padrão: PeekAdmin2025
 ```
 
-⚠️ Altere a senha imediatamente após o primeiro acesso no painel admin!
+## ⚠️ Altere a senha imediatamente após o primeiro acesso no painel admin!
 
 ---
 
-📖 Como usar
+## 📖 Como usar
 
 Acessar como administrador
 

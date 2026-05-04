@@ -36,7 +36,7 @@
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/ps.chat-admin.git
+git clone https://github.com/PSecurity/ps.chat-admin
 cd ps.chat-admin
 ```
 

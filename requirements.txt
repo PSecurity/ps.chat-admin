@@ -1,5 +1,4 @@
 flask==2.3.3
 flask-socketio==5.3.4
 eventlet==0.33.3
-bcrypt==4.1.0
 zeroconf==0.131.0

@@ -7,6 +7,8 @@
 
 **Servidor de chat privado, offline e com administração centralizada** – ideal para redes locais, eventos, equipes ou comunicação interna sem depender da internet.
 
+[![PS.Chat Client Demo](https://placehold.co/800x200/0a0014/b026ff?text=PS.Chat+Admin)](https://tempimg.cc/800x200?bg=0a0014&color=ff00ff&text=PS.Chat-Admin)
+
 ---
 
 ## ✨ Funcionalidades

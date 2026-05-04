@@ -7,8 +7,6 @@
 
 **Servidor de chat privado, offline e com administração centralizada** – ideal para redes locais, eventos, equipes ou comunicação interna sem depender da internet.
 
-![PS.Chat Admin Demo](https://via.placeholder.com/800x400?text=PS.Chat+Admin+Painel)
-
 ---
 
 ## ✨ Funcionalidades

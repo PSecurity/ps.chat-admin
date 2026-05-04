@@ -99,7 +99,7 @@ Cliente Python Usar ps.chat-cli.py do repositório cliente
 
 ---
 
-🧩 Estrutura do projeto
+## 🧩 Estrutura do projeto
 
 ```
 ps.chat-admin/
@@ -121,44 +121,45 @@ ps.chat-admin/
 
 ---
 
-🛠️ Configuração avançada
+## 🛠️ Configuração avançada
 
-Alterar porta do servidor
+**Alterar porta do servidor**
 
-Edite a última linha do ps.chat-adm.py:
+**Edite a última linha do ps.chat-adm.py:**
 
 ```python
 socketio.run(app, host='0.0.0.0', port=8080, ...)
 ```
 
-Executar anúncio mDNS em segundo plano
+**Executar anúncio mDNS em segundo plano**
 
 ```bash
 python ps.chat-mdns.py &
 ```
 
-Resetar senha do admin
+**Resetar senha do admin**
 
-Delete o arquivo admin.hash e reinicie o servidor:
+**Delete o arquivo admin.hash e reinicie o servidor:**
 
 ```bash
 rm admin.hash
 python ps.chat-adm.py
 ```
 
-A senha voltará a ser PeekAdmin2025.
+*A senha voltará a ser `PeekAdmin2025`.*
 
 ---
 
-🐛 Troubleshooting
+## 🐛 Troubleshooting
 
-Problema Solução
+**Problema Solução**
+```
 Erro Address already in use Porta 5000 ocupada. Altere a porta no código ou mate o processo: kill $(lsof -t -i:5000)
 Cliente não acessa a sala Verifique se estão na mesma rede Wi-Fi. Use ifconfig no Termux para ver o IP correto.
 WebSocket não conecta Instale a versão correta: pip install flask-socketio==5.3.4 eventlet==0.33.3
 Login admin não funciona Verifique o arquivo admin.hash. Se necessário, delete e reinicie.
 Mensagens não aparecem Abra o console do navegador (F12) e veja se há erros JavaScript.
-
+```
 ---
 
 📡 Como outros dispositivos encontram o servidor?

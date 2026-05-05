@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, json, secrets, webbrowser, html, time, socket
+import os, json, secrets, webbrowser, html, time, socket, sys, signal
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -648,17 +648,27 @@ def obter_ip_local():
         return 'localhost'
 
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.3 iniciado")
+    print("🔥 PS.Chat Admin v2.2.4 iniciado")
     host = '0.0.0.0'
     port = 5000
     ip_local = obter_ip_local()
-    url_admin_local = f"http://localhost:{port}/admin/login"
-    url_admin_ip = f"http://{ip_local}:{port}/admin/login"
-    print(f"➡ Painel local: {url_admin_local}")
+    url_local = f"http://localhost:{port}/admin/login"
+    url_ip = f"http://{ip_local}:{port}/admin/login" if ip_local != 'localhost' else url_local
+
+    print(f"➡ Painel local: {url_local}")
     if ip_local != 'localhost':
-        print(f"➡ Painel rede: {url_admin_ip}")
+        print(f"➡ Painel rede: {url_ip}")
+
+    # Modo daemon (--daemon)
+    if '--daemon' in sys.argv or '-d' in sys.argv:
+        print("⚙️ Modo daemon ativado. O servidor continuará rodando em segundo plano.")
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+
     try:
-        webbrowser.open(url_admin_local)
+        webbrowser.open(url_local)
     except:
-        print(f"⚠ Navegador não abriu. Acesse manualmente: {url_admin_local}")
+        pass
+
     socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)

@@ -702,7 +702,7 @@ def obter_ip_local():
         return 'localhost'
 
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.8 iniciado")
+    print("🔥 PS.Chat Admin v2.2.9 iniciado")
     host = '0.0.0.0'
     port = 5000
     ip_local = obter_ip_local()

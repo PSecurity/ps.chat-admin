@@ -31,7 +31,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 
-# ---------- Helpers (carregamento/gravação) ----------
+# ---------- Ajudantes (carregamento/gravação) ----------
 def carregar_ou_gerar_chave():
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE) as f: return f.read().strip()
@@ -128,7 +128,7 @@ usuarios = {}
 contador_mensagens = {}
 ultima_rotacao = {}
 
-# ---------- Rate limiting ----------
+# ---------- Limite de tentativas ----------
 login_attempts = {}
 
 def registrar_tentativa(ip):
@@ -150,7 +150,7 @@ def ip_bloqueado(ip):
     tentativas, inicio = login_attempts[ip]
     return tentativas > MAX_LOGIN_ATTEMPTS and (time.time() - inicio) < LOGIN_BLOCK_TIME
 
-# ---------- Decorator ----------
+# ---------- Decorador admin ----------
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -158,7 +158,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ========== ROTAS ADMIN ==========
+# ========== ROTAS DE ADMINISTRAÇÃO ==========
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -333,10 +333,10 @@ def admin_sala_acao(token):
                 break
         if not target_sid: return jsonify({'status': 'erro', 'mensagem': 'Usuário não encontrado'}), 404
 
-        admin_nome = 'Admin'  # Nome fixo para ações vindas do painel web
+        admin_nome = 'Admin'
 
         if acao == 'kick':
-            emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
+            socketio.emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
             leave_room(target_sid, token)
             usuarios.pop(target_sid, None)
             salvar_modlog('kick', token, admin_nome, target)
@@ -346,14 +346,14 @@ def admin_sala_acao(token):
         elif acao == 'promote':
             if target_sid in usuarios:
                 usuarios[target_sid]['moderator'] = True
-                emit('promoted', {}, room=target_sid)
+                socketio.emit('promoted', {}, room=target_sid)
                 salvar_modlog('promote', token, admin_nome, target)
                 notificar_sala(token, f'⬆️ {target} foi promovido a moderador.')
                 return jsonify({'status': 'ok'})
         elif acao == 'demote':
             if target_sid in usuarios:
                 usuarios[target_sid]['moderator'] = False
-                emit('demoted', {}, room=target_sid)
+                socketio.emit('demoted', {}, room=target_sid)
                 salvar_modlog('demote', token, admin_nome, target)
                 notificar_sala(token, f'⬇️ {target} foi rebaixado de moderador.')
                 return jsonify({'status': 'ok'})
@@ -366,7 +366,7 @@ def admin_sala_acao(token):
             if device:
                 banned_d = carregar_banned_devices()
                 if device not in banned_d: banned_d.append(device); salvar_banned_devices(banned_d)
-            emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
+            socketio.emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
             leave_room(target_sid, token)
             usuarios.pop(target_sid, None)
             salvar_modlog('block', token, admin_nome, target)
@@ -376,14 +376,14 @@ def admin_sala_acao(token):
         elif acao == 'mute':
             if target_sid in usuarios:
                 usuarios[target_sid]['muted'] = True
-                emit('muted', {}, room=target_sid)
+                socketio.emit('muted', {}, room=target_sid)
                 salvar_modlog('mute', token, admin_nome, target)
                 notificar_sala(token, f'🔇 {target} foi silenciado.')
                 return jsonify({'status': 'ok'})
         elif acao == 'unmute':
             if target_sid in usuarios:
                 usuarios[target_sid]['muted'] = False
-                emit('unmuted', {}, room=target_sid)
+                socketio.emit('unmuted', {}, room=target_sid)
                 salvar_modlog('unmute', token, admin_nome, target)
                 notificar_sala(token, f'🔈 {target} foi desilenciado.')
                 return jsonify({'status': 'ok'})
@@ -407,7 +407,8 @@ def notificar_sala(token, texto):
     hist.append(msg)
     salvar_historico(token, hist)
 
-# ========== WEBSOCKET ==========
+# ========== WEBSOCKET (EVENTOS) ==========
+
 @socketio.on('entrar')
 def on_entrar(data):
     token = data.get('token')
@@ -689,7 +690,7 @@ def on_disconnect():
                 salvar_salas(salas)
                 log_acesso('SALA_EFEMERA_REMOVIDA', token)
 
-# ---------- Inicialização ----------
+# ---------- Início do servidor ----------
 def obter_ip_local():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -701,7 +702,7 @@ def obter_ip_local():
         return 'localhost'
 
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.7-fix iniciado")
+    print("🔥 PS.Chat Admin v2.2.8 iniciado")
     host = '0.0.0.0'
     port = 5000
     ip_local = obter_ip_local()

@@ -4,9 +4,9 @@
 import os
 import json
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -14,7 +14,8 @@ from functools import wraps
 # ===== CONFIGURAÇÕES =====
 HISTORICO_DIR = 'historico'
 LOGS_DIR = 'logs'
-LOG_FILE = os.path.join(LOGS_DIR, 'logs/acesso.log')
+# CORREÇÃO AQUI: caminho do arquivo de log
+LOG_FILE = os.path.join(LOGS_DIR, 'acesso.log')   # ou simplesmente 'logs/acesso.log'
 ADMIN_HASH_FILE = 'admin.hash'
 SECRET_FILE = 'secret.key'
 SALAS_FILE = 'salas.json'
@@ -23,7 +24,7 @@ SENHA_PADRAO = 'PeekAdmin2025'
 
 # ===== INICIALIZAÇÃO DO APP =====
 app = Flask(__name__)
-app.config['SECRET_KEY'] = None  # será definida pela função abaixo
+app.config['SECRET_KEY'] = None
 socketio = SocketIO(app, async_mode='threading')
 
 # ===== GARANTIR DIRETÓRIOS =====
@@ -33,7 +34,6 @@ os.makedirs(HISTORICO_DIR, exist_ok=True)
 # ===== FUNÇÕES AUXILIARES =====
 
 def carregar_ou_gerar_chave():
-    """Carrega a chave secreta do arquivo ou gera uma nova e salva."""
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE, 'r') as f:
             return f.read().strip()
@@ -41,7 +41,7 @@ def carregar_ou_gerar_chave():
     with open(SECRET_FILE, 'w') as f:
         f.write(chave)
     try:
-        os.chmod(SECRET_FILE, 0o600)  # restringe permissão no Unix
+        os.chmod(SECRET_FILE, 0o600)
     except:
         pass
     return chave
@@ -53,7 +53,6 @@ def carregar_hash_admin():
     if os.path.exists(ADMIN_HASH_FILE):
         with open(ADMIN_HASH_FILE, 'r') as f:
             return f.read().strip()
-    # Se não existe, gerar hash da senha padrão
     h = generate_password_hash(SENHA_PADRAO)
     with open(ADMIN_HASH_FILE, 'w') as f:
         f.write(h)
@@ -96,7 +95,6 @@ def salvar_historico(token, historico):
 
 
 def carregar_salas():
-    """Carrega as salas salvas em disco."""
     if not os.path.exists(SALAS_FILE):
         return {}
     try:
@@ -107,16 +105,16 @@ def carregar_salas():
 
 
 def salvar_salas(salas_dict):
-    """Persiste o dicionário de salas em disco."""
     with open(SALAS_FILE, 'w') as f:
         json.dump(salas_dict, f, indent=2)
 
 
 # ===== ESTADO GLOBAL =====
-salas = carregar_salas()   # Persistente
-usuarios = {}              # Em memória: {request.sid: {"token": ..., "username": ...}}
+salas = carregar_salas()
+usuarios = {}   # {request.sid: {"token": ..., "username": ...}}
 
-# ===== DECORADOR DE AUTENTICAÇÃO ADMIN =====
+
+# ===== DECORADOR ADMIN =====
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -162,7 +160,7 @@ def criar_sala():
     nome = request.form.get('nome', 'Sala sem nome').strip()[:50]
     token = secrets.token_hex(4)
     salas[token] = {"nome": nome, "criador": request.remote_addr}
-    salvar_salas(salas)          # <-- PERSISTIR
+    salvar_salas(salas)
     log_acesso('CRIAR_SALA', token, f'Nome: {nome}')
     return jsonify({'token': token, 'nome': nome})
 
@@ -173,7 +171,7 @@ def excluir_sala(token):
     if token in salas:
         nome = salas[token]['nome']
         del salas[token]
-        salvar_salas(salas)      # <-- PERSISTIR
+        salvar_salas(salas)
         log_acesso('EXCLUIR_SALA', token, f'Nome: {nome}')
         return jsonify({'status': 'ok'})
     return jsonify({'status': 'erro', 'mensagem': 'Sala não encontrada'}), 404
@@ -188,7 +186,6 @@ def listar_salas():
 @app.route('/admin/logs')
 @admin_required
 def admin_logs():
-    # Lê últimas 200 linhas
     if os.path.exists(LOG_FILE):
         with open(LOG_FILE, 'r') as f:
             linhas = f.readlines()[-200:]
@@ -210,7 +207,7 @@ def alterar_senha():
         return jsonify({'status': 'erro', 'mensagem': 'Senha atual incorreta.'})
     novo_hash = generate_password_hash(nova_senha)
     salvar_hash_admin(novo_hash)
-    session.pop('admin_auth', None)  # força novo login
+    session.pop('admin_auth', None)
     log_acesso('SENHA_ALTERADA')
     return jsonify({'status': 'ok'})
 
@@ -222,7 +219,6 @@ def admin_gerar_qrcode(token):
         return "Sala não encontrada", 404
     import qrcode
     import io
-    from flask import Response
     img = qrcode.make(token)
     buf = io.BytesIO()
     img.save(buf, format='PNG')
@@ -230,11 +226,11 @@ def admin_gerar_qrcode(token):
     return Response(buf.getvalue(), mimetype='image/png')
 
 
-# ===== ROTA DO CHAT (USUÁRIO) =====
+# ===== CHAT DO USUÁRIO =====
 @app.route('/chat/<token>')
 def chat(token):
     if token not in salas:
-        return "Sala não encontrada ou expirada. Peça ao administrador um novo token.", 404
+        return "Sala não encontrada ou expirada.", 404
     historico = carregar_historico(token)
     return render_template('chat.html', token=token, nome_sala=salas[token]['nome'], historico=historico)
 
@@ -298,7 +294,7 @@ def on_disconnect():
             log_acesso('SAIR_SALA', token, f'Usuário: {user["username"]}')
 
 
-# ===== INÍCIO DO SERVIDOR =====
+# ===== INÍCIO =====
 if __name__ == '__main__':
     print("🔥 PS.Chat Admin iniciado em http://0.0.0.0:5000")
     print("ℹ️  Acesse /admin para administrar salas.")

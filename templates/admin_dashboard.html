@@ -1,1 +1,215 @@
-0
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS.Chat Admin - Painel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 20px; }
+        .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .section:last-child { border-bottom: none; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #d32f2f; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f2f2f2; }
+        .alert { padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+        .alert-success { background: #dff0d8; color: #3c763d; }
+        .alert-error { background: #f2dede; color: #a94442; }
+        .top-right { position: absolute; top: 20px; right: 20px; }
+        a { color: #2196F3; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .qr-img { max-width: 200px; margin-top: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 800px; margin: 0 auto; position: relative;">
+        <a href="/admin/logout" class="top-right" style="background: #555; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none;">Sair</a>
+    </div>
+    <div class="container">
+        <h1>🔐 Painel Administrativo - PS.Chat</h1>
+        
+        <!-- Seção Criar Sala -->
+        <div class="section">
+            <h2>Criar Nova Sala</h2>
+            <label for="nomeSala">Nome da Sala:</label>
+            <input type="text" id="nomeSala" placeholder="Ex: Reunião de Projeto" maxlength="50">
+            <button onclick="criarSala()">Criar Sala</button>
+            <div id="msgCriarSala"></div>
+        </div>
+        
+        <!-- Seção Listar Salas -->
+        <div class="section">
+            <h2>Salas Ativas (<span id="contadorSalas">0</span>)</h2>
+            <table id="tabelaSalas">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Token</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="linhaVazia"><td colspan="3" style="text-align: center;">Nenhuma sala criada.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Seção Alterar Senha -->
+        <div class="section">
+            <h2>Alterar Senha do Admin</h2>
+            <label for="senhaAtual">Senha Atual:</label>
+            <input type="password" id="senhaAtual">
+            <label for="novaSenha">Nova Senha:</label>
+            <input type="password" id="novaSenha">
+            <button onclick="alterarSenha()">Alterar Senha</button>
+            <div id="msgSenha"></div>
+        </div>
+        
+        <!-- Seção Logs -->
+        <div class="section">
+            <h2>Logs de Acesso</h2>
+            <p><a href="/admin/logs" target="_blank">Ver últimos 200 registros →</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Função para carregar lista de salas
+        async function carregarSalas() {
+            try {
+                const response = await fetch('/admin/listar_salas');
+                const salas = await response.json();
+                const tbody = document.querySelector('#tabelaSalas tbody');
+                const contador = document.getElementById('contadorSalas');
+                const keys = Object.keys(salas);
+                contador.textContent = keys.length;
+
+                tbody.innerHTML = '';
+                if (keys.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Nenhuma sala criada.</td></tr>';
+                    return;
+                }
+
+                keys.forEach(token => {
+                    const sala = salas[token];
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${escapeHtml(sala.nome)}</td>
+                        <td><code>${escapeHtml(token)}</code></td>
+                        <td>
+                            <a href="/chat/${token}" target="_blank">Abrir Chat</a> |
+                            <a href="/admin/gerar_qrcode/${token}" target="_blank">QR Code</a> |
+                            <button class="danger" onclick="excluirSala('${token}')">Excluir</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('Erro ao carregar salas:', err);
+            }
+        }
+
+        // Escape HTML para evitar XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(text));
+            return div.innerHTML;
+        }
+
+        // Criar sala
+        async function criarSala() {
+            const nome = document.getElementById('nomeSala').value.trim();
+            if (!nome) {
+                mostrarMensagem('msgCriarSala', 'Por favor, digite um nome para a sala.', 'error');
+                return;
+            }
+            try {
+                const response = await fetch('/admin/criar_sala', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ 'nome': nome })
+                });
+                const data = await response.json();
+                if (data.token) {
+                    mostrarMensagem('msgCriarSala', `Sala criada! Token: ${data.token}`, 'success');
+                    document.getElementById('nomeSala').value = '';
+                    carregarSalas();
+                } else {
+                    mostrarMensagem('msgCriarSala', 'Erro ao criar sala.', 'error');
+                }
+            } catch (err) {
+                mostrarMensagem('msgCriarSala', 'Erro de conexão.', 'error');
+            }
+        }
+
+        // Excluir sala
+        async function excluirSala(token) {
+            if (!confirm('Tem certeza que deseja excluir esta sala? As mensagens serão perdidas.')) return;
+            try {
+                const response = await fetch('/admin/excluir_sala/' + token, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    alert('Sala excluída.');
+                    carregarSalas();
+                } else {
+                    alert('Erro ao excluir: ' + data.mensagem);
+                }
+            } catch (err) {
+                alert('Erro de conexão.');
+            }
+        }
+
+        // Alterar senha
+        async function alterarSenha() {
+            const senhaAtual = document.getElementById('senhaAtual').value;
+            const novaSenha = document.getElementById('novaSenha').value;
+            if (!senhaAtual || !novaSenha) {
+                mostrarMensagem('msgSenha', 'Preencha todos os campos.', 'error');
+                return;
+            }
+            if (novaSenha.length < 6) {
+                mostrarMensagem('msgSenha', 'A nova senha deve ter pelo menos 6 caracteres.', 'error');
+                return;
+            }
+            try {
+                const response = await fetch('/admin/alterar_senha', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ 'senha_atual': senhaAtual, 'nova_senha': novaSenha })
+                });
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    mostrarMensagem('msgSenha', 'Senha alterada com sucesso. Redirecionando para login...', 'success');
+                    document.getElementById('senhaAtual').value = '';
+                    document.getElementById('novaSenha').value = '';
+                    setTimeout(() => { window.location.href = '/admin/login'; }, 2000);
+                } else {
+                    mostrarMensagem('msgSenha', data.mensagem, 'error');
+                }
+            } catch (err) {
+                mostrarMensagem('msgSenha', 'Erro de conexão.', 'error');
+            }
+        }
+
+        // Exibir mensagens de feedback
+        function mostrarMensagem(id, texto, tipo) {
+            const div = document.getElementById(id);
+            div.className = 'alert alert-' + tipo;
+            div.textContent = texto;
+            div.classList.remove('hidden');
+            setTimeout(() => { div.classList.add('hidden'); }, 5000);
+        }
+
+        // Carregar salas ao iniciar
+        carregarSalas();
+    </script>
+</body>
+</html>

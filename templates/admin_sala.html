@@ -28,7 +28,7 @@
   .btn {
     font-family:inherit; font-size:0.7rem; padding:4px 10px; border:1px solid var(--border);
     background:transparent; color: var(--text); cursor:pointer; transition:0.2s;
-    letter-spacing:1px; text-decoration:none; display:inline-block;
+    letter-spacing:1px; text-decoration:none; display:inline-block; white-space:nowrap;
   }
   .btn:hover { border-color: var(--glow); color:#fff; box-shadow:0 0 6px var(--glow); }
   .btn-danger { border-color: var(--red); color: var(--red); }
@@ -44,12 +44,20 @@
     font-family:'Orbitron', monospace; font-size:0.8rem; color:var(--accent);
     margin-bottom:1rem; text-shadow:0 0 4px var(--glow);
   }
-  table { width:100%; border-collapse:collapse; font-size:0.75rem; }
-  th, td { padding:8px; text-align:left; border-bottom:1px solid var(--border); }
-  th { color: var(--dim); font-weight:400; text-transform:uppercase; }
-  .actions { display:flex; gap:6px; }
-  form { display:inline; }
-  .back-link { display:inline-block; margin-top:10px; color:var(--accent); }
+  .member-grid { display:flex; flex-direction:column; gap:10px; }
+  .member-card {
+    background: var(--bg); border:1px solid var(--border); padding:10px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .member-info {
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+    font-size:0.75rem;
+  }
+  .member-name { color: var(--accent); display:flex; align-items:center; gap:4px; }
+  .member-actions {
+    display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;
+  }
+  .member-actions .btn { font-size:0.6rem; padding:3px 8px; }
 </style>
 </head>
 <body>
@@ -61,35 +69,33 @@
   <div class="panel">
     <h2>GERENCIAR: {{ nome_sala }}</h2>
     <div style="font-size:0.7rem; color:var(--dim); margin-bottom:10px;">Token: {{ token }}</div>
-    <table>
-      <thead><tr><th>Usuário</th><th>Ações</th></tr></thead>
-      <tbody>
-        {% for m in membros %}
-        <tr>
-          <td>
+    <div class="member-grid">
+      {% for m in membros %}
+      <div class="member-card">
+        <div class="member-info">
+          <span class="member-name">
             {% if m.admin %}👑{% elif m.moderator %}🛡️{% endif %}
             {{ m.username }}
             {{ m.has_pubkey and '🔑' or '❌' }}
             {% if m.muted %}🔇{% endif %}
-          </td>
-          <td class="actions">
-            <button class="btn btn-danger" onclick="acao('kick', '{{ m.username }}')">KICK</button>
-            <button class="btn btn-success" onclick="acao('promote', '{{ m.username }}')" {{ 'disabled' if m.moderator or m.admin }}>PROMOVER</button>
-            <button class="btn btn-warning" onclick="acao('demote', '{{ m.username }}')" {{ 'disabled' if not m.moderator }}>REBAIXAR</button>
-            <button class="btn btn-danger" onclick="acao('block', '{{ m.username }}')">BLOQUEAR</button>
-            <button class="btn" onclick="acao('mute', '{{ m.username }}')" {{ 'disabled' if m.muted }}>MUTE</button>
-            <button class="btn" onclick="acao('unmute', '{{ m.username }}')" {{ 'disabled' if not m.muted }}>UNMUTE</button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          </span>
+        </div>
+        <div class="member-actions">
+          <button class="btn btn-danger" onclick="acao('kick', '{{ m.username }}')">KICK</button>
+          <button class="btn btn-success" onclick="acao('promote', '{{ m.username }}')" {{ 'disabled' if m.moderator or m.admin }}>PROMOVER</button>
+          <button class="btn btn-warning" onclick="acao('demote', '{{ m.username }}')" {{ 'disabled' if not m.moderator }}>REBAIXAR</button>
+          <button class="btn btn-danger" onclick="acao('block', '{{ m.username }}')">BLOQUEAR</button>
+          <button class="btn" onclick="acao('mute', '{{ m.username }}')" {{ 'disabled' if m.muted }}>MUTE</button>
+          <button class="btn" onclick="acao('unmute', '{{ m.username }}')" {{ 'disabled' if not m.muted }}>UNMUTE</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
     {% if not membros %}
     <p style="text-align:center;color:var(--dim);margin-top:10px;">Nenhum membro na sala.</p>
     {% endif %}
   </div>
 </div>
-
 <script>
   async function acao(acao, username) {
     if (!confirm(`Confirmar ${acao.toUpperCase()} de ${username}?`)) return;

@@ -301,20 +301,7 @@ def alterar_senha():
     log_acesso('SENHA_ALTERADA')
     return jsonify({'status': 'ok'})
 
-@app.route('/admin/gerar_qrcode/<token>')
-@admin_required
-def admin_gerar_qrcode(token):
-    if token not in salas: return "Sala não encontrada", 404
-    try:
-        import qrcode, io
-        img = qrcode.make(token)
-        buf = io.BytesIO()
-        img.save(buf, format='PNG')
-        buf.seek(0)
-        return Response(buf.getvalue(), mimetype='image/png')
-    except ImportError:
-        return "⚠ Pillow não instalado. Execute: pkg install python-pillow (Termux) ou pip install Pillow", 500
-
+# Rota de convite (sem QR, apenas link)
 @app.route('/admin/invite/<token>')
 @admin_required
 def admin_invite(token):
@@ -648,7 +635,7 @@ def obter_ip_local():
         return 'localhost'
 
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.4 iniciado")
+    print("🔥 PS.Chat Admin v2.2.5 iniciado")
     host = '0.0.0.0'
     port = 5000
     ip_local = obter_ip_local()
@@ -659,9 +646,8 @@ if __name__ == '__main__':
     if ip_local != 'localhost':
         print(f"➡ Painel rede: {url_ip}")
 
-    # Modo daemon (--daemon)
     if '--daemon' in sys.argv or '-d' in sys.argv:
-        print("⚙️ Modo daemon ativado. O servidor continuará rodando em segundo plano.")
+        print("⚙️ Modo daemon ativado.")
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
         sys.stdout = open(os.devnull, 'w')
         sys.stderr = open(os.devnull, 'w')

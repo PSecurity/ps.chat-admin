@@ -1,215 +1,487 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PS.Chat Admin - Painel</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; margin-bottom: 20px; }
-        .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
-        .section:last-child { border-bottom: none; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #45a049; }
-        button.danger { background: #f44336; }
-        button.danger:hover { background: #d32f2f; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f2f2f2; }
-        .alert { padding: 10px; margin-bottom: 10px; border-radius: 4px; }
-        .alert-success { background: #dff0d8; color: #3c763d; }
-        .alert-error { background: #f2dede; color: #a94442; }
-        .top-right { position: absolute; top: 20px; right: 20px; }
-        a { color: #2196F3; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .qr-img { max-width: 200px; margin-top: 10px; }
-        .hidden { display: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔐 PS.Chat Admin — PeekSecurity</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0010;
+    --bg2:       #0f0018;
+    --panel:     #110020;
+    --border:    #6b00c8;
+    --border2:   #9b30ff;
+    --glow:      #a855f7;
+    --glow2:     #7c3aed;
+    --text:      #d8b4fe;
+    --text2:     #e9d5ff;
+    --dim:       #7c3aed88;
+    --accent:    #c084fc;
+    --green:     #4ade80;
+    --red:       #f87171;
+    --scan:      rgba(168,85,247,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      var(--scan) 2px, var(--scan) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, #000000cc 100%);
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    box-shadow: 0 0 20px #6b00c840;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: var(--accent);
+    text-shadow: 0 0 12px var(--glow), 0 0 30px var(--glow2);
+    letter-spacing: 2px;
+  }
+  .logo span { color: var(--glow); }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:hover { border-color: var(--glow); color: #fff; text-shadow: 0 0 8px var(--glow); box-shadow: 0 0 12px #7c3aed40; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { border-color: var(--glow); color: var(--accent); box-shadow: inset 0 0 8px #6b00c830; }
+  .btn-primary:hover { background: #6b00c820; box-shadow: 0 0 16px var(--glow); }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { box-shadow: 0 0 12px #f8717140; background: #f8717110; }
+  .btn-success { border-color: var(--green); color: var(--green); }
+  .btn-success:hover { box-shadow: 0 0 12px #4ade8040; background: #4ade8010; }
+
+  .statusbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 4px 20px;
+    font-size: 0.65rem;
+    color: var(--dim);
+    border-bottom: 1px solid #6b00c830;
+    background: #0a001088;
+    flex-wrap: wrap;
+  }
+  .statusbar span { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  #workspace {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 0 16px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    box-shadow: 0 0 16px #6b00c830;
+    margin-bottom: 24px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .panel-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 12px #6b00c820;
+    gap: 8px;
+  }
+
+  .panel-dots { display: flex; gap: 5px; }
+  .panel-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-close { background: #f87171; box-shadow: 0 0 6px #f87171; }
+  .dot-min   { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
+  .dot-max   { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+
+  .panel-title-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px var(--glow2);
+  }
+
+  .panel-content {
+    padding: 16px;
+    font-size: 0.8rem;
+    color: var(--text);
+  }
+
+  .panel-content label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--dim);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+  }
+
+  .panel-content input[type="text"],
+  .panel-content input[type="password"] {
+    width: 100%;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    caret-color: var(--glow);
+  }
+
+  .panel-content input:focus {
+    border-color: var(--glow);
+    box-shadow: 0 0 8px var(--glow2);
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    margin-top: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+  }
+
+  th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #6b00c830;
+  }
+
+  th {
+    color: var(--accent);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.65rem;
+    background: var(--bg2);
+  }
+
+  td code {
+    background: #0a0015;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--glow);
+  }
+
+  .action-links a, .action-links button {
+    margin-right: 6px;
+    font-size: 0.7rem;
+    color: var(--accent);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: 'Share Tech Mono', monospace;
+    text-decoration: underline;
+  }
+
+  .action-links button.danger {
+    color: var(--red);
+    text-decoration: none;
+  }
+
+  #toast {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    padding: 8px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--glow);
+    color: var(--accent);
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    box-shadow: 0 0 20px var(--glow2);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 9997;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  .corner-decor {
+    position: fixed;
+    bottom: 10px; left: 16px;
+    font-family: 'VT323', monospace;
+    font-size: 1rem;
+    color: #6b00c840;
+    pointer-events: none;
+    z-index: 9990;
+    letter-spacing: 1px;
+  }
+</style>
 </head>
 <body>
-    <div style="max-width: 800px; margin: 0 auto; position: relative;">
-        <a href="/admin/logout" class="top-right" style="background: #555; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none;">Sair</a>
+
+<header>
+  <div class="logo">🔐 PS.<span>CHAT ADMIN</span></div>
+  <div class="header-controls">
+    <a href="/admin/logs" target="_blank" class="btn">📋 LOGS</a>
+    <a href="/admin/logout" class="btn btn-danger">SAIR</a>
+  </div>
+</header>
+
+<div class="statusbar">
+  <span><i class="dot"></i> ONLINE</span>
+  <span id="sb-time">--:--:--</span>
+  <span>PS.CHAT v1.5</span>
+  <span id="sb-salas-count">0 SALAS ATIVAS</span>
+</div>
+
+<div id="workspace">
+
+  <!-- PAINEL CRIAR SALA -->
+  <div class="panel">
+    <div class="panel-titlebar">
+      <div class="panel-dots">
+        <div class="panel-dot dot-close"></div>
+        <div class="panel-dot dot-min"></div>
+        <div class="panel-dot dot-max"></div>
+      </div>
+      <span class="panel-title-text">CRIAR NOVA SALA</span>
+      <span></span>
     </div>
-    <div class="container">
-        <h1>🔐 Painel Administrativo - PS.Chat</h1>
-        
-        <!-- Seção Criar Sala -->
-        <div class="section">
-            <h2>Criar Nova Sala</h2>
-            <label for="nomeSala">Nome da Sala:</label>
-            <input type="text" id="nomeSala" placeholder="Ex: Reunião de Projeto" maxlength="50">
-            <button onclick="criarSala()">Criar Sala</button>
-            <div id="msgCriarSala"></div>
-        </div>
-        
-        <!-- Seção Listar Salas -->
-        <div class="section">
-            <h2>Salas Ativas (<span id="contadorSalas">0</span>)</h2>
-            <table id="tabelaSalas">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Token</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr id="linhaVazia"><td colspan="3" style="text-align: center;">Nenhuma sala criada.</td></tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Seção Alterar Senha -->
-        <div class="section">
-            <h2>Alterar Senha do Admin</h2>
-            <label for="senhaAtual">Senha Atual:</label>
-            <input type="password" id="senhaAtual">
-            <label for="novaSenha">Nova Senha:</label>
-            <input type="password" id="novaSenha">
-            <button onclick="alterarSenha()">Alterar Senha</button>
-            <div id="msgSenha"></div>
-        </div>
-        
-        <!-- Seção Logs -->
-        <div class="section">
-            <h2>Logs de Acesso</h2>
-            <p><a href="/admin/logs" target="_blank">Ver últimos 200 registros →</a></p>
-        </div>
+    <div class="panel-content">
+      <label for="nomeSala">NOME DA SALA</label>
+      <input type="text" id="nomeSala" placeholder="Ex: Reunião de Projeto" maxlength="50">
+      <button class="btn btn-primary" onclick="criarSala()">CRIAR SALA</button>
+      <div id="msgCriarSala" style="margin-top:8px;font-size:0.7rem;"></div>
     </div>
+  </div>
 
-    <script>
-        // Função para carregar lista de salas
-        async function carregarSalas() {
-            try {
-                const response = await fetch('/admin/listar_salas');
-                const salas = await response.json();
-                const tbody = document.querySelector('#tabelaSalas tbody');
-                const contador = document.getElementById('contadorSalas');
-                const keys = Object.keys(salas);
-                contador.textContent = keys.length;
+  <!-- PAINEL SALAS ATIVAS -->
+  <div class="panel">
+    <div class="panel-titlebar">
+      <div class="panel-dots">
+        <div class="panel-dot dot-close"></div>
+        <div class="panel-dot dot-min"></div>
+        <div class="panel-dot dot-max"></div>
+      </div>
+      <span class="panel-title-text">SALAS ATIVAS</span>
+      <span style="font-size:0.65rem;color:var(--dim);" id="contadorSalas">0</span>
+    </div>
+    <div class="panel-content">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Token</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaSalas">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-                tbody.innerHTML = '';
-                if (keys.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Nenhuma sala criada.</td></tr>';
-                    return;
-                }
+  <!-- PAINEL ALTERAR SENHA -->
+  <div class="panel">
+    <div class="panel-titlebar">
+      <div class="panel-dots">
+        <div class="panel-dot dot-close"></div>
+        <div class="panel-dot dot-min"></div>
+        <div class="panel-dot dot-max"></div>
+      </div>
+      <span class="panel-title-text">ALTERAR SENHA</span>
+      <span></span>
+    </div>
+    <div class="panel-content">
+      <label for="senhaAtual">SENHA ATUAL</label>
+      <input type="password" id="senhaAtual">
+      <label for="novaSenha">NOVA SENHA</label>
+      <input type="password" id="novaSenha">
+      <button class="btn btn-primary" onclick="alterarSenha()">ALTERAR SENHA</button>
+      <div id="msgSenha" style="margin-top:8px;font-size:0.7rem;"></div>
+    </div>
+  </div>
 
-                keys.forEach(token => {
-                    const sala = salas[token];
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${escapeHtml(sala.nome)}</td>
-                        <td><code>${escapeHtml(token)}</code></td>
-                        <td>
-                            <a href="/chat/${token}" target="_blank">Abrir Chat</a> |
-                            <a href="/admin/gerar_qrcode/${token}" target="_blank">QR Code</a> |
-                            <button class="danger" onclick="excluirSala('${token}')">Excluir</button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) {
-                console.error('Erro ao carregar salas:', err);
-            }
-        }
+</div>
 
-        // Escape HTML para evitar XSS
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.appendChild(document.createTextNode(text));
-            return div.innerHTML;
-        }
+<div id="toast"></div>
+<div class="corner-decor">PSECURITY // CHAT // ADMIN</div>
 
-        // Criar sala
-        async function criarSala() {
-            const nome = document.getElementById('nomeSala').value.trim();
-            if (!nome) {
-                mostrarMensagem('msgCriarSala', 'Por favor, digite um nome para a sala.', 'error');
-                return;
-            }
-            try {
-                const response = await fetch('/admin/criar_sala', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ 'nome': nome })
-                });
-                const data = await response.json();
-                if (data.token) {
-                    mostrarMensagem('msgCriarSala', `Sala criada! Token: ${data.token}`, 'success');
-                    document.getElementById('nomeSala').value = '';
-                    carregarSalas();
-                } else {
-                    mostrarMensagem('msgCriarSala', 'Erro ao criar sala.', 'error');
-                }
-            } catch (err) {
-                mostrarMensagem('msgCriarSala', 'Erro de conexão.', 'error');
-            }
-        }
+<script>
+  // ── FUNÇÕES ──
+  async function carregarSalas() {
+    const resp = await fetch('/admin/listar_salas');
+    const salas = await resp.json();
+    const tbody = document.getElementById('tabelaSalas');
+    const contador = document.getElementById('contadorSalas');
+    const sbCount = document.getElementById('sb-salas-count');
+    const chaves = Object.keys(salas);
+    contador.textContent = chaves.length;
+    sbCount.textContent = chaves.length + ' SALAS ATIVAS';
 
-        // Excluir sala
-        async function excluirSala(token) {
-            if (!confirm('Tem certeza que deseja excluir esta sala? As mensagens serão perdidas.')) return;
-            try {
-                const response = await fetch('/admin/excluir_sala/' + token, { method: 'DELETE' });
-                const data = await response.json();
-                if (data.status === 'ok') {
-                    alert('Sala excluída.');
-                    carregarSalas();
-                } else {
-                    alert('Erro ao excluir: ' + data.mensagem);
-                }
-            } catch (err) {
-                alert('Erro de conexão.');
-            }
-        }
+    if (chaves.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--dim);">NENHUMA SALA CRIADA</td></tr>';
+      return;
+    }
 
-        // Alterar senha
-        async function alterarSenha() {
-            const senhaAtual = document.getElementById('senhaAtual').value;
-            const novaSenha = document.getElementById('novaSenha').value;
-            if (!senhaAtual || !novaSenha) {
-                mostrarMensagem('msgSenha', 'Preencha todos os campos.', 'error');
-                return;
-            }
-            if (novaSenha.length < 6) {
-                mostrarMensagem('msgSenha', 'A nova senha deve ter pelo menos 6 caracteres.', 'error');
-                return;
-            }
-            try {
-                const response = await fetch('/admin/alterar_senha', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ 'senha_atual': senhaAtual, 'nova_senha': novaSenha })
-                });
-                const data = await response.json();
-                if (data.status === 'ok') {
-                    mostrarMensagem('msgSenha', 'Senha alterada com sucesso. Redirecionando para login...', 'success');
-                    document.getElementById('senhaAtual').value = '';
-                    document.getElementById('novaSenha').value = '';
-                    setTimeout(() => { window.location.href = '/admin/login'; }, 2000);
-                } else {
-                    mostrarMensagem('msgSenha', data.mensagem, 'error');
-                }
-            } catch (err) {
-                mostrarMensagem('msgSenha', 'Erro de conexão.', 'error');
-            }
-        }
+    tbody.innerHTML = chaves.map(token => {
+      const sala = salas[token];
+      return `<tr>
+        <td>${escapeHtml(sala.nome)}</td>
+        <td><code>${escapeHtml(token)}</code></td>
+        <td class="action-links">
+          <a href="/chat/${token}" target="_blank">ABRIR</a>
+          <a href="/admin/gerar_qrcode/${token}" target="_blank">QR</a>
+          <button class="danger" onclick="excluirSala('${token}')">EXCLUIR</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
 
-        // Exibir mensagens de feedback
-        function mostrarMensagem(id, texto, tipo) {
-            const div = document.getElementById(id);
-            div.className = 'alert alert-' + tipo;
-            div.textContent = texto;
-            div.classList.remove('hidden');
-            setTimeout(() => { div.classList.add('hidden'); }, 5000);
-        }
+  function escapeHtml(texto) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(texto));
+    return div.innerHTML;
+  }
 
-        // Carregar salas ao iniciar
-        carregarSalas();
-    </script>
+  async function criarSala() {
+    const nome = document.getElementById('nomeSala').value.trim();
+    const msgDiv = document.getElementById('msgCriarSala');
+    if (!nome) {
+      msgDiv.innerHTML = '<span style="color:var(--red)">DIGITE UM NOME</span>';
+      return;
+    }
+    const resp = await fetch('/admin/criar_sala', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({nome})
+    });
+    const data = await resp.json();
+    if (data.token) {
+      document.getElementById('nomeSala').value = '';
+      msgDiv.innerHTML = `<span style="color:var(--green)">SALA CRIADA: <code>${data.token}</code></span>`;
+      toast('SALA CRIADA — ' + data.token);
+      carregarSalas();
+    } else {
+      msgDiv.innerHTML = '<span style="color:var(--red)">ERRO AO CRIAR</span>';
+    }
+  }
+
+  async function excluirSala(token) {
+    if (!confirm('DELETAR SALA ' + token + '?')) return;
+    const resp = await fetch('/admin/excluir_sala/' + token, {method: 'DELETE'});
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      toast('SALA EXCLUÍDA');
+      carregarSalas();
+    } else {
+      alert('ERRO: ' + data.mensagem);
+    }
+  }
+
+  async function alterarSenha() {
+    const atual = document.getElementById('senhaAtual').value;
+    const nova = document.getElementById('novaSenha').value;
+    const msgDiv = document.getElementById('msgSenha');
+    if (!atual || !nova) {
+      msgDiv.innerHTML = '<span style="color:var(--red)">PREENCHA TODOS OS CAMPOS</span>';
+      return;
+    }
+    if (nova.length < 6) {
+      msgDiv.innerHTML = '<span style="color:var(--red)">MÍNIMO 6 CARACTERES</span>';
+      return;
+    }
+    const resp = await fetch('/admin/alterar_senha', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({senha_atual: atual, nova_senha: nova})
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      document.getElementById('senhaAtual').value = '';
+      document.getElementById('novaSenha').value = '';
+      msgDiv.innerHTML = '<span style="color:var(--green)">SENHA ALTERADA. REDIRECIONANDO...</span>';
+      toast('SENHA ALTERADA');
+      setTimeout(() => { window.location.href = '/admin/login'; }, 2000);
+    } else {
+      msgDiv.innerHTML = `<span style="color:var(--red)">${data.mensagem.toUpperCase()}</span>`;
+    }
+  }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  function updateClock() {
+    document.getElementById('sb-time').textContent = new Date().toLocaleTimeString('pt-BR');
+  }
+
+  // ── INIT ──
+  carregarSalas();
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
 </body>
 </html>

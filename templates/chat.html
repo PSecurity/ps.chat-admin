@@ -103,69 +103,78 @@
     </div>
   </div>
 </div>
-<!-- Socket.IO local (offline) -->
-<script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
+
+<!-- Tentar carregar Socket.IO local, com fallback para CDN -->
 <script>
-  const socket = io();
-  const token = "{{ token }}";
-  let username = prompt("Seu nome:") || "Anônimo";
+  var socket;
+  function initChat() {
+    socket = io();
+    const token = "{{ token }}";
+    var username = prompt("Seu nome:") || "Anônimo";
 
-  socket.emit('entrar', { token, username });
+    socket.emit('entrar', { token: token, username: username });
 
-  socket.on('mensagem', function(msg) {
-      adicionarMensagem(msg);
-  });
+    socket.on('mensagem', function(msg) {
+        adicionarMensagem(msg);
+    });
 
-  socket.on('erro', function(data) {
-      alert(data.mensagem);
-  });
+    socket.on('erro', function(data) {
+        alert(data.mensagem);
+    });
 
-  function adicionarMensagem(msg) {
-      const container = document.getElementById('chat-messages');
-      const div = document.createElement('div');
-      div.className = 'msg' + (msg.type === 'system' ? ' system' : '');
-      div.innerHTML = '<span class="user">' + escapeHtml(msg.user) + '</span> ' +
-                      '<span>' + escapeHtml(msg.text) + '</span>' +
-                      '<span class="time">' + escapeHtml(msg.timestamp) + '</span>';
-      container.appendChild(div);
-      container.scrollTop = container.scrollHeight;
+    function adicionarMensagem(msg) {
+        var container = document.getElementById('chat-messages');
+        var div = document.createElement('div');
+        // Compatível com histórico antigo (sem type) e mensagens novas
+        var isSystem = (msg.type === 'system') || (msg.user && msg.user.startsWith('⚡'));
+        div.className = 'msg' + (isSystem ? ' system' : '');
+        div.innerHTML = '<span class="user">' + escapeHtml(msg.user) + '</span> ' +
+                        '<span>' + escapeHtml(msg.text) + '</span>' +
+                        '<span class="time">' + escapeHtml(msg.timestamp) + '</span>';
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function enviar() {
+        var input = document.getElementById('message-input');
+        var text = input.value.trim();
+        if (!text) return;
+        socket.emit('mensagem', {
+            token: token,
+            text: text,
+            timestamp: new Date().toISOString()
+        });
+        input.value = '';
+        input.focus();
+    }
+
+    document.getElementById('send-button').addEventListener('click', enviar);
+    document.getElementById('message-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            enviar();
+        }
+    });
+
+    // Histórico (já sanitizado pelo servidor)
+    var historico = {{ historico | tojson }};
+    historico.forEach(function(msg) {
+        adicionarMensagem(msg);
+    });
   }
-
-  function escapeHtml(text) {
-      return String(text)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
-  }
-
-  function enviar() {
-      const input = document.getElementById('message-input');
-      const text = input.value.trim();
-      if (!text) return;
-      socket.emit('mensagem', {
-          token: token,
-          text: text,
-          timestamp: new Date().toISOString()
-      });
-      input.value = '';
-      input.focus();
-  }
-
-  document.getElementById('send-button').addEventListener('click', enviar);
-  document.getElementById('message-input').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-          e.preventDefault();
-          enviar();
-      }
-  });
-
-  // Carregar histórico (já sanitizado pelo servidor)
-  const historico = {{ historico | tojson }};
-  historico.forEach(function(msg) {
-      adicionarMensagem(msg);
-  });
 </script>
+<!-- Carrega o script do Socket.IO e inicializa -->
+<script src="{{ url_for('static', filename='socket.io.min.js') }}"
+        onerror="this.onerror=null;this.src='https://cdn.socket.io/4.7.5/socket.io.min.js';" 
+        onload="initChat()"></script>
 </body>
 </html>

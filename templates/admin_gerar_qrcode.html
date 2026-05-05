@@ -1,0 +1,13 @@
+@app.route('/admin/gerar_qrcode/<token>')
+@admin_required
+def admin_gerar_qrcode(token):
+    if token not in salas: return "Sala não encontrada", 404
+    try:
+        import qrcode, io
+        img = qrcode.make(token)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        return Response(buf.getvalue(), mimetype='image/png')
+    except ImportError:
+        return "⚠ Pillow não instalado. Execute: pkg install python-pillow (Termux) ou pip install Pillow", 500

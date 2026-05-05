@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📜 ModLog — PS.Chat Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0010; --panel: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --text: #d8b4fe; --dim: #7c3aed88; --accent: #c084fc;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; padding:20px;
+  }
+  .container { max-width:900px; margin:0 auto; }
+  h1 {
+    font-family:'Orbitron', monospace; font-size:1rem; color:var(--accent);
+    text-shadow:0 0 6px var(--glow); margin-bottom:16px;
+  }
+  .log-box {
+    background:var(--panel); border:1px solid var(--border);
+    padding:16px; max-height:70vh; overflow-y:auto; font-size:0.75rem;
+    line-height:1.6; white-space:pre-wrap; color:var(--text);
+  }
+  a { color: var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📜 LOG DE MODERAÇÃO</h1>
+  <div class="log-box">
+    {% for entry in logs %}
+    {{ entry.timestamp }} | {{ entry.acao }} | sala: {{ entry.token }} | admin: {{ entry.admin }} | alvo: {{ entry.target }}{% if entry.detalhe %} | {{ entry.detalhe }}{% endif %}
+    {% endfor %}
+  </div>
+  <p style="margin-top:12px;"><a href="/admin">← Voltar ao painel</a></p>
+</div>
+</body>
+</html>

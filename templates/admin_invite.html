@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔗 Convite — PS.Chat Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0010; --panel: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --text: #d8b4fe; --dim: #7c3aed88; --accent: #c084fc;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .panel {
+    background:var(--panel); border:1px solid var(--border);
+    padding:2rem; max-width:500px; text-align:center;
+    box-shadow:0 0 20px #6b00c840;
+  }
+  h2 {
+    font-family:'Orbitron', monospace; font-size:1rem; color:var(--accent);
+    text-shadow:0 0 6px var(--glow); margin-bottom:1rem;
+  }
+  .link {
+    background:var(--bg); border:1px solid var(--border);
+    padding:10px; word-break:break-all; font-size:0.8rem; color:var(--text);
+    margin:1rem 0;
+  }
+  .btn {
+    font-family:inherit; font-size:0.7rem; padding:4px 10px; border:1px solid var(--border);
+    background:transparent; color: var(--text); cursor:pointer; transition:0.2s;
+    letter-spacing:1px; text-decoration:none; display:inline-block;
+  }
+  .btn:hover { border-color: var(--glow); color:#fff; box-shadow:0 0 6px var(--glow); }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h2>🔗 LINK DE CONVITE</h2>
+  <p style="font-size:0.7rem; color:var(--dim);">Compartilhe este link com os participantes (válido apenas na rede local).</p>
+  <div class="link">{{ link }}</div>
+  <a href="/admin" class="btn">← VOLTAR</a>
+</div>
+</body>
+</html>

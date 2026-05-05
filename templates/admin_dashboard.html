@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔐 PS.Chat Admin — PeekSecurity</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0010; --panel: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --glow2: #7c3aed; --text: #d8b4fe; --accent: #c084fc; --green: #4ade80;
+    --red: #f87171; --dim: #7c3aed88; --yellow: #facc15;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; min-height:100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  header {
+    width:100%; padding:12px 20px; border-bottom:1px solid var(--border);
+    background: var(--panel); box-shadow:0 0 15px #6b00c820;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:10px;
+  }
+  .logo {
+    font-family: 'Orbitron', monospace; font-weight:900; font-size:1rem;
+    color: var(--accent); text-shadow:0 0 6px var(--glow); letter-spacing:1px;
+  }
+  .logo span { color: var(--glow); }
+  .header-links { display:flex; gap:10px; flex-wrap:wrap; }
+  .btn {
+    font-family:inherit; font-size:0.7rem; padding:4px 12px; border:1px solid var(--border);
+    background:transparent; color: var(--text); cursor:pointer; transition:0.2s;
+    letter-spacing:1px; text-decoration:none; display:inline-block;
+  }
+  .btn:hover { border-color: var(--glow); color:#fff; box-shadow:0 0 8px var(--glow2); }
+  .btn-primary { border-color: var(--glow); color: var(--accent); }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .container { width:100%; max-width:800px; margin:20px; display:flex; flex-direction:column; gap:20px; }
+  .panel {
+    background: var(--panel); border:1px solid var(--border);
+    box-shadow:0 0 12px #6b00c820; padding:1.2rem;
+  }
+  .panel h2 {
+    font-family:'Orbitron', monospace; font-size:0.8rem; color: var(--accent);
+    letter-spacing:1px; margin-bottom:1rem; text-shadow:0 0 4px var(--glow2);
+  }
+  label {
+    display:block; font-size:0.7rem; color: var(--dim); margin-bottom:4px;
+  }
+  input[type="text"], input[type="password"] {
+    width:100%; padding:6px; margin-bottom:10px; background: var(--bg);
+    border:1px solid var(--border); color: var(--text); font-family:inherit;
+    font-size:0.8rem; outline:none; caret-color: var(--glow);
+  }
+  input:focus { border-color: var(--glow); box-shadow:0 0 6px var(--glow2); }
+  .checkbox-group { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .checkbox-group input[type="checkbox"] { width:auto; margin:0; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px; }
+  .card {
+    background: var(--panel); border:1px solid var(--border); padding:10px;
+    text-align:center; font-size:0.8rem; position:relative;
+  }
+  .card .token { font-size:0.7rem; color: var(--dim); word-break: break-all; }
+  .card .actions { margin-top:8px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap; }
+  .copy-btn {
+    background:transparent; border:1px solid var(--border2); color: var(--text);
+    cursor:pointer; font-size:0.6rem; padding:2px 6px;
+  }
+  .copy-btn:hover { background:var(--border); }
+  .badge {
+    position:absolute; top:6px; right:6px; font-size:0.6rem; padding:2px 6px;
+    background: var(--border); border-radius:2px; color: var(--accent);
+  }
+  .footer {
+    margin-top:auto; padding:10px; font-size:0.6rem; color: var(--dim);
+    border-top:1px solid var(--border); width:100%; text-align:center;
+  }
+  #toast {
+    position:fixed; bottom:20px; right:20px; padding:8px 16px; background:var(--panel);
+    border:1px solid var(--glow); color: var(--accent); font-size:0.7rem;
+    opacity:0; transition:0.3s; pointer-events:none; z-index:999;
+  }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🔐 PS.<span>CHAT ADMIN</span></div>
+  <div class="header-links">
+    <a href="/admin/setup_question" class="btn">🔒 SEGURANÇA</a>
+    <a href="/admin/modlog" class="btn">📜 MODLOG</a>
+    <a href="/admin/blocked_names" class="btn">🚫 BLOCKLIST</a>
+    <a href="/admin/logout" class="btn btn-danger">SAIR</a>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Criar sala -->
+  <div class="panel">
+    <h2>CRIAR NOVA SALA</h2>
+    <label for="nomeSala">Nome da sala</label>
+    <input type="text" id="nomeSala" placeholder="Ex: Reunião de Projeto" maxlength="50">
+    <label for="senhaSala">Senha (opcional)</label>
+    <input type="password" id="senhaSala" placeholder="Deixe em branco para sala aberta">
+    <div class="checkbox-group">
+      <input type="checkbox" id="efemeraSala" name="efemera">
+      <label for="efemeraSala" style="margin-bottom:0;">Sala efêmera (some quando vazia)</label>
+    </div>
+    <button class="btn btn-primary" onclick="criarSala()">CRIAR SALA</button>
+    <div id="msgCriarSala" style="font-size:0.7rem;margin-top:8px;"></div>
+  </div>
+
+  <!-- Lista de salas -->
+  <div class="panel">
+    <h2>SALAS ATIVAS</h2>
+    <div class="grid" id="salasGrid"></div>
+  </div>
+
+  <!-- Alterar senha -->
+  <div class="panel">
+    <h2>ALTERAR SENHA</h2>
+    <label for="senhaAtual">Senha atual</label>
+    <input type="password" id="senhaAtual">
+    <label for="novaSenha">Nova senha</label>
+    <input type="password" id="novaSenha">
+    <button class="btn btn-primary" onclick="alterarSenha()">ALTERAR</button>
+    <div id="msgSenha" style="font-size:0.7rem;margin-top:8px;"></div>
+  </div>
+</div>
+
+<div class="footer">PSECURITY // CHAT // ADMIN</div>
+<div id="toast"></div>
+
+<script>
+  async function carregarSalas() {
+    const resp = await fetch('/admin/listar_salas');
+    const salas = await resp.json();
+    const grid = document.getElementById('salasGrid');
+    const chaves = Object.keys(salas);
+    if (chaves.length === 0) {
+      grid.innerHTML = '<p style="color:var(--dim);text-align:center;">Nenhuma sala criada.</p>';
+      return;
+    }
+    grid.innerHTML = chaves.map(token => {
+      const s = salas[token];
+      const isEfemer = s.efemera ? '⚡' : '';
+      return `<div class="card">
+        <span class="badge">${s.senha_hash ? '🔒' : '🔓'}${isEfemer}</span>
+        <strong>${escapeHtml(s.nome)}</strong>
+        <div class="token">${escapeHtml(token)}</div>
+        <button class="copy-btn" onclick="copiarToken('${token}')">📋 Copiar</button>
+        <div class="actions">
+          <a href="/admin/sala/${token}" class="btn">GERIR</a>
+          <button class="btn btn-danger" onclick="excluirSala('${token}')">EXCLUIR</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function escapeHtml(t) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(t));
+    return d.innerHTML;
+  }
+
+  function copiarToken(t) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(t).then(() => toast('Token copiado!'));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = t; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Token copiado (fallback)');
+    }
+  }
+
+  async function criarSala() {
+    const nome = document.getElementById('nomeSala').value.trim();
+    const senha = document.getElementById('senhaSala').value.trim();
+    const efemera = document.getElementById('efemeraSala').checked;
+    const msg = document.getElementById('msgCriarSala');
+    if (!nome) { msg.innerHTML = '<span style="color:var(--red)">DIGITE UM NOME</span>'; return; }
+    const resp = await fetch('/admin/criar_sala', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({nome, senha, efemera: efemera ? 'on' : ''})
+    });
+    const data = await resp.json();
+    if (data.token) {
+      document.getElementById('nomeSala').value = '';
+      document.getElementById('senhaSala').value = '';
+      document.getElementById('efemeraSala').checked = false;
+      msg.innerHTML = `<span style="color:var(--green)">Sala criada: ${data.token}</span>`;
+      carregarSalas();
+    } else {
+      msg.innerHTML = '<span style="color:var(--red)">Erro ao criar sala.</span>';
+    }
+  }
+
+  async function excluirSala(token) {
+    if (!confirm('Excluir sala ' + token + '?')) return;
+    await fetch('/admin/excluir_sala/' + token, {method:'DELETE'});
+    carregarSalas();
+  }
+
+  async function alterarSenha() {
+    const atual = document.getElementById('senhaAtual').value;
+    const nova = document.getElementById('novaSenha').value;
+    const msg = document.getElementById('msgSenha');
+    if (!atual || !nova) { msg.innerHTML = '<span style="color:var(--red)">Preencha todos os campos.</span>'; return; }
+    if (nova.length < 6) { msg.innerHTML = '<span style="color:var(--red)">Mínimo 6 caracteres.</span>'; return; }
+    const resp = await fetch('/admin/alterar_senha', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({senha_atual:atual, nova_senha:nova})
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      msg.innerHTML = '<span style="color:var(--green)">Senha alterada. Redirecionando...</span>';
+      setTimeout(() => location.href = '/admin/login', 2000);
+    } else {
+      msg.innerHTML = `<span style="color:var(--red)">${data.mensagem}</span>`;
+    }
+  }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  carregarSalas();
+</script>
+</body>
+</html>

@@ -301,15 +301,6 @@ def alterar_senha():
     log_acesso('SENHA_ALTERADA')
     return jsonify({'status': 'ok'})
 
-# Rota de convite (sem QR, apenas link)
-@app.route('/admin/invite/<token>')
-@admin_required
-def admin_invite(token):
-    if token not in salas: return "Sala não encontrada", 404
-    base = request.host_url.rstrip('/')
-    link = f"{base}/chat?token={token}"
-    return render_template('admin_invite.html', link=link, token=token)
-
 @app.route('/admin/sala/<token>')
 @admin_required
 def admin_sala(token):
@@ -602,6 +593,56 @@ def on_ban_user(data):
         salvar_modlog('ban', token, user_info['username'], target)
         _rotacionar_sala(token)
 
+# ---------- Novos handlers: promote, demote, verify ----------
+@socketio.on('promote_user')
+def on_promote_user(data):
+    token = data.get('token')
+    target = data.get('username')
+    user_info = usuarios.get(request.sid, {})
+    if not user_info.get('admin') and not user_info.get('moderator'):
+        emit('erro', {'mensagem': 'Sem permissão.'}); return
+    for sid, u in usuarios.items():
+        if u['token'] == token and u['username'] == target:
+            usuarios[sid]['moderator'] = True
+            emit('promoted', {}, room=sid)
+            salvar_modlog('promote', token, user_info['username'], target)
+            # Notifica quem promoveu
+            emit('erro', {'mensagem': f'{target} promovido a moderador.'})
+            break
+
+@socketio.on('demote_user')
+def on_demote_user(data):
+    token = data.get('token')
+    target = data.get('username')
+    user_info = usuarios.get(request.sid, {})
+    if not user_info.get('admin') and not user_info.get('moderator'):
+        emit('erro', {'mensagem': 'Sem permissão.'}); return
+    for sid, u in usuarios.items():
+        if u['token'] == token and u['username'] == target:
+            usuarios[sid]['moderator'] = False
+            emit('demoted', {}, room=sid)
+            salvar_modlog('demote', token, user_info['username'], target)
+            emit('erro', {'mensagem': f'{target} rebaixado.'})
+            break
+
+@socketio.on('verify_request')
+def on_verify_request(data):
+    token = data.get('token')
+    target = data.get('target')
+    for sid, u in usuarios.items():
+        if u['token'] == token and u['username'] == target:
+            emit('verify_request', data, room=sid)
+            break
+
+@socketio.on('verify_response')
+def on_verify_response(data):
+    token = data.get('token')
+    requester = data.get('requester')
+    for sid, u in usuarios.items():
+        if u['token'] == token and u['username'] == requester:
+            emit('verify_response', data, room=sid)
+            break
+
 @socketio.on('disconnect')
 def on_disconnect():
     user = usuarios.pop(request.sid, None)
@@ -635,7 +676,7 @@ def obter_ip_local():
         return 'localhost'
 
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.5 iniciado")
+    print("🔥 PS.Chat Admin v2.2.6 iniciado")
     host = '0.0.0.0'
     port = 5000
     ip_local = obter_ip_local()

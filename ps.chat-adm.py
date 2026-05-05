@@ -320,80 +320,82 @@ def admin_sala(token):
 @app.route('/admin/sala/<token>/acao', methods=['POST'])
 @admin_required
 def admin_sala_acao(token):
-    if token not in salas: return jsonify({'status': 'erro', 'mensagem': 'Sala inválida'}), 404
-    acao = request.form.get('acao')
-    target = request.form.get('username')
-    if not target or not acao: return jsonify({'status': 'erro', 'mensagem': 'Parâmetros insuficientes'}), 400
+    try:
+        if token not in salas: return jsonify({'status': 'erro', 'mensagem': 'Sala inválida'}), 404
+        acao = request.form.get('acao')
+        target = request.form.get('username')
+        if not target or not acao: return jsonify({'status': 'erro', 'mensagem': 'Parâmetros insuficientes'}), 400
 
-    target_sid = None
-    for sid, u in usuarios.items():
-        if u.get('token') == token and u['username'] == target:
-            target_sid = sid
-            break
-    if not target_sid: return jsonify({'status': 'erro', 'mensagem': 'Usuário não encontrado'}), 404
+        target_sid = None
+        for sid, u in usuarios.items():
+            if u.get('token') == token and u['username'] == target:
+                target_sid = sid
+                break
+        if not target_sid: return jsonify({'status': 'erro', 'mensagem': 'Usuário não encontrado'}), 404
 
-    admin_nome = 'Admin'
+        admin_nome = 'Admin'  # Nome fixo para ações vindas do painel web
 
-    if acao == 'kick':
-        emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
-        leave_room(target_sid, token)
-        usuarios.pop(target_sid, None)
-        salvar_modlog('kick', token, admin_nome, target)
-        notificar_sala(token, f'👢 {target} foi expulso da sala.')
-        _rotacionar_sala(token)
-        return jsonify({'status': 'ok'})
-    elif acao == 'promote':
-        if target_sid in usuarios:
-            usuarios[target_sid]['moderator'] = True
-            emit('promoted', {}, room=target_sid)
-            salvar_modlog('promote', token, admin_nome, target)
-            notificar_sala(token, f'⬆️ {target} foi promovido a moderador.')
+        if acao == 'kick':
+            emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
+            leave_room(target_sid, token)
+            usuarios.pop(target_sid, None)
+            salvar_modlog('kick', token, admin_nome, target)
+            notificar_sala(token, f'👢 {target} foi expulso da sala.')
+            _rotacionar_sala(token)
             return jsonify({'status': 'ok'})
-    elif acao == 'demote':
-        if target_sid in usuarios:
-            usuarios[target_sid]['moderator'] = False
-            emit('demoted', {}, room=target_sid)
-            salvar_modlog('demote', token, admin_nome, target)
-            notificar_sala(token, f'⬇️ {target} foi rebaixado de moderador.')
+        elif acao == 'promote':
+            if target_sid in usuarios:
+                usuarios[target_sid]['moderator'] = True
+                emit('promoted', {}, room=target_sid)
+                salvar_modlog('promote', token, admin_nome, target)
+                notificar_sala(token, f'⬆️ {target} foi promovido a moderador.')
+                return jsonify({'status': 'ok'})
+        elif acao == 'demote':
+            if target_sid in usuarios:
+                usuarios[target_sid]['moderator'] = False
+                emit('demoted', {}, room=target_sid)
+                salvar_modlog('demote', token, admin_nome, target)
+                notificar_sala(token, f'⬇️ {target} foi rebaixado de moderador.')
+                return jsonify({'status': 'ok'})
+        elif acao == 'block':
+            chave = usuarios[target_sid].get('pubkey')
+            device = usuarios[target_sid].get('device_id')
+            if chave:
+                banned = carregar_banned_keys()
+                if chave not in banned: banned.append(chave); salvar_banned_keys(banned)
+            if device:
+                banned_d = carregar_banned_devices()
+                if device not in banned_d: banned_d.append(device); salvar_banned_devices(banned_d)
+            emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
+            leave_room(target_sid, token)
+            usuarios.pop(target_sid, None)
+            salvar_modlog('block', token, admin_nome, target)
+            notificar_sala(token, f'🚫 {target} foi banido da sala.')
+            _rotacionar_sala(token)
             return jsonify({'status': 'ok'})
-    elif acao == 'block':
-        chave = usuarios[target_sid].get('pubkey')
-        device = usuarios[target_sid].get('device_id')
-        if chave:
-            banned = carregar_banned_keys()
-            if chave not in banned: banned.append(chave); salvar_banned_keys(banned)
-        if device:
-            banned_d = carregar_banned_devices()
-            if device not in banned_d: banned_d.append(device); salvar_banned_devices(banned_d)
-        emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
-        leave_room(target_sid, token)
-        usuarios.pop(target_sid, None)
-        salvar_modlog('block', token, admin_nome, target)
-        notificar_sala(token, f'🚫 {target} foi banido da sala.')
-        _rotacionar_sala(token)
-        return jsonify({'status': 'ok'})
-    elif acao == 'mute':
-        if target_sid in usuarios:
-            usuarios[target_sid]['muted'] = True
-            emit('muted', {}, room=target_sid)
-            salvar_modlog('mute', token, admin_nome, target)
-            notificar_sala(token, f'🔇 {target} foi silenciado.')
-            return jsonify({'status': 'ok'})
-    elif acao == 'unmute':
-        if target_sid in usuarios:
-            usuarios[target_sid]['muted'] = False
-            emit('unmuted', {}, room=target_sid)
-            salvar_modlog('unmute', token, admin_nome, target)
-            notificar_sala(token, f'🔈 {target} foi desilenciado.')
-            return jsonify({'status': 'ok'})
-    return jsonify({'status': 'erro', 'mensagem': 'Ação desconhecida'}), 400
+        elif acao == 'mute':
+            if target_sid in usuarios:
+                usuarios[target_sid]['muted'] = True
+                emit('muted', {}, room=target_sid)
+                salvar_modlog('mute', token, admin_nome, target)
+                notificar_sala(token, f'🔇 {target} foi silenciado.')
+                return jsonify({'status': 'ok'})
+        elif acao == 'unmute':
+            if target_sid in usuarios:
+                usuarios[target_sid]['muted'] = False
+                emit('unmuted', {}, room=target_sid)
+                salvar_modlog('unmute', token, admin_nome, target)
+                notificar_sala(token, f'🔈 {target} foi desilenciado.')
+                return jsonify({'status': 'ok'})
+        return jsonify({'status': 'erro', 'mensagem': 'Ação desconhecida'}), 400
+    except Exception as e:
+        return jsonify({'status': 'erro', 'mensagem': str(e)}), 500
 
 def _rotacionar_sala(token):
     if token in salas:
         socketio.emit('rotate_key', {}, room=token)
 
 def notificar_sala(token, texto):
-    """Emite uma mensagem de sistema para todos da sala."""
     msg = {
         'type': 'system',
         'user': '⚡ Sistema',
@@ -401,7 +403,6 @@ def notificar_sala(token, texto):
         'timestamp': datetime.now().isoformat()
     }
     socketio.emit('mensagem', msg, room=token)
-    # Salvar no histórico
     hist = carregar_historico(token)
     hist.append(msg)
     salvar_historico(token, hist)
@@ -700,7 +701,7 @@ def obter_ip_local():
         return 'localhost'
 
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.7 iniciado")
+    print("🔥 PS.Chat Admin v2.2.7-fix iniciado")
     host = '0.0.0.0'
     port = 5000
     ip_local = obter_ip_local()

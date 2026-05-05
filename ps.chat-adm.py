@@ -187,7 +187,8 @@ def on_entrar(data):
     username = data.get('username', 'Anônimo')[:50]
     pubkey = data.get('pubkey')
     sign_pubkey = data.get('sign_pubkey')
-    senha = data.get('senha', '')
+    senha_sala = data.get('senha', '')
+    senha_admin = data.get('senha_admin', '')
 
     if token not in salas:
         emit('erro', {'mensagem': 'Sala inválida.'})
@@ -195,22 +196,33 @@ def on_entrar(data):
 
     sala = salas[token]
     if 'senha_hash' in sala:
-        if not senha or not check_password_hash(sala['senha_hash'], senha):
+        if not senha_sala or not check_password_hash(sala['senha_hash'], senha_sala):
             emit('erro', {'mensagem': 'Senha da sala incorreta.'})
             return
 
     join_room(token)
+
+    # Verificar se é admin via CLI
+    is_admin = False
+    if senha_admin:
+        if check_password_hash(carregar_hash_admin(), senha_admin):
+            is_admin = True
+            log_acesso('ADMIN_CLI', token, f'Usuário: {username} autenticado como admin')
+
     usuarios[request.sid] = {
         'token': token,
         'username': username,
         'pubkey': pubkey,
-        'sign_pubkey': sign_pubkey
+        'sign_pubkey': sign_pubkey,
+        'admin': is_admin
     }
 
+    # Mensagem de sistema
+    prefix = "👑 Admin " if is_admin else ""
     msg_sistema = {
         'type': 'system',
         'user': '⚡ Sistema',
-        'text': f'{html.escape(username)} entrou na sala.',
+        'text': f'{html.escape(prefix + username)} entrou na sala.',
         'timestamp': datetime.now().isoformat()
     }
     hist = carregar_historico(token)
@@ -218,6 +230,11 @@ def on_entrar(data):
     salvar_historico(token, hist)
     socketio.emit('mensagem', msg_sistema, room=token)
 
+    # Confirmação de admin para o próprio cliente
+    if is_admin:
+        emit('admin_auth', {'status': 'ok'})
+
+    # Anunciar chave pública
     if pubkey and sign_pubkey:
         socketio.emit('chave_publica', {
             'user': username,
@@ -233,8 +250,6 @@ def on_entrar(data):
                     'sign_pubkey': u['sign_pubkey']
                 })
 
-    log_acesso('ENTRAR_SALA', token, f'Usuário: {username}')
-
 @socketio.on('mensagem')
 def on_mensagem(data):
     token = data.get('token')
@@ -243,6 +258,10 @@ def on_mensagem(data):
     user_info = usuarios.get(request.sid, {})
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
+
+    # Se o remetente for admin, marca a mensagem
+    if user_info.get('admin'):
+        data['admin'] = True
 
     if 'text' in data and 'ciphertext' not in data:
         data['text'] = html.escape(data['text'][:2000])
@@ -264,7 +283,8 @@ def on_sala_info(data):
         if u.get('token') == token:
             members.append({
                 'username': u['username'],
-                'has_pubkey': bool(u.get('pubkey'))
+                'has_pubkey': bool(u.get('pubkey')),
+                'admin': u.get('admin', False)
             })
     emit('sala_info', {'members': members})
 

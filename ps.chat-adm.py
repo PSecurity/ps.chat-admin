@@ -197,12 +197,12 @@ def on_entrar(data):
     sala = salas[token]
     if 'senha_hash' in sala:
         if not senha_sala or not check_password_hash(sala['senha_hash'], senha_sala):
-            emit('erro', {'mensagem': 'Senha da sala incorreta.'})
+            emit('erro', {'mensagem': 'Senha da sala incorreta.', 'tipo': 'senha_sala'})
             return
 
     join_room(token)
 
-    # Verificar se é admin via CLI
+    # Verificar admin
     is_admin = False
     if senha_admin:
         if check_password_hash(carregar_hash_admin(), senha_admin):
@@ -217,7 +217,6 @@ def on_entrar(data):
         'admin': is_admin
     }
 
-    # Mensagem de sistema
     prefix = "👑 Admin " if is_admin else ""
     msg_sistema = {
         'type': 'system',
@@ -230,11 +229,9 @@ def on_entrar(data):
     salvar_historico(token, hist)
     socketio.emit('mensagem', msg_sistema, room=token)
 
-    # Confirmação de admin para o próprio cliente
     if is_admin:
         emit('admin_auth', {'status': 'ok'})
 
-    # Anunciar chave pública
     if pubkey and sign_pubkey:
         socketio.emit('chave_publica', {
             'user': username,
@@ -259,7 +256,6 @@ def on_mensagem(data):
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
 
-    # Se o remetente for admin, marca a mensagem
     if user_info.get('admin'):
         data['admin'] = True
 

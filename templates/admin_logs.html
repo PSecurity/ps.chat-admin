@@ -1,1 +1,49 @@
-0
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📋 Logs — PS.Chat Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0010; --bg2: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --glow2: #7c3aed; --text: #d8b4fe; --accent: #c084fc; --green: #4ade80;
+    --scan: rgba(168,85,247,0.04);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh; padding: 20px;
+  }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan) 2px, var(--scan) 4px);
+    pointer-events:none; z-index:9999;
+  }
+  .container { max-width: 900px; margin:0 auto; position:relative; z-index:1; }
+  h1 {
+    font-family: 'Orbitron', monospace; font-size:1rem; color: var(--accent);
+    text-shadow: 0 0 12px var(--glow); margin-bottom:16px;
+  }
+  .log-list {
+    background: var(--bg2); border:1px solid var(--border);
+    padding:16px; max-height:70vh; overflow-y:auto; font-size:0.75rem;
+    line-height:1.6; white-space:pre-wrap; color: var(--text);
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .log-list::-webkit-scrollbar { width:5px; }
+  .log-list::-webkit-scrollbar-thumb { background: var(--border); }
+  a { color: var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📋 ÚLTIMOS LOGS</h1>
+  <div class="log-list">{% for linha in logs %}{{ linha }}{% endfor %}</div>
+  <p style="margin-top:12px;"><a href="/admin">← Voltar ao painel</a></p>
+</div>
+</body>
+</html>

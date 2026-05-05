@@ -242,6 +242,24 @@
     text-decoration: none;
   }
 
+  /* Estilo para o botão de copiar token */
+  .copy-token-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    margin-left: 4px;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+  .copy-token-btn:hover {
+    background: var(--bg2);
+    color: var(--accent);
+    box-shadow: 0 0 8px var(--glow2);
+  }
+
   #toast {
     position: fixed;
     bottom: 20px; right: 20px;
@@ -366,7 +384,34 @@
 <div class="corner-decor">PSECURITY // CHAT // ADMIN</div>
 
 <script>
-  // ── FUNÇÕES ──
+  // ── Função para copiar token (com fallback) ──
+  function copiarToken(token) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(token).then(() => {
+        toast('TOKEN COPIADO: ' + token);
+      }).catch(() => fallbackCopy(token));
+    } else {
+      fallbackCopy(token);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      toast('TOKEN COPIADO (fallback)');
+    } catch (err) {
+      toast('FALHA AO COPIAR');
+    }
+    document.body.removeChild(textarea);
+  }
+
+  // ── Carregar salas ──
   async function carregarSalas() {
     const resp = await fetch('/admin/listar_salas');
     const salas = await resp.json();
@@ -386,7 +431,10 @@
       const sala = salas[token];
       return `<tr>
         <td>${escapeHtml(sala.nome)}</td>
-        <td><code>${escapeHtml(token)}</code></td>
+        <td>
+          <code>${escapeHtml(token)}</code>
+          <button class="copy-token-btn" onclick="copiarToken('${token}')" title="Copiar token">📋</button>
+        </td>
         <td class="action-links">
           <a href="/chat/${token}" target="_blank">ABRIR</a>
           <a href="/admin/gerar_qrcode/${token}" target="_blank">QR</a>
@@ -417,7 +465,7 @@
     const data = await resp.json();
     if (data.token) {
       document.getElementById('nomeSala').value = '';
-      msgDiv.innerHTML = `<span style="color:var(--green)">SALA CRIADA: <code>${data.token}</code></span>`;
+      msgDiv.innerHTML = `<span style="color:var(--green)">SALA CRIADA — TOKEN: <code style="cursor:pointer" onclick="copiarToken('${data.token}')">${data.token}</code> <button class="copy-token-btn" onclick="copiarToken('${data.token}')">📋 COPIAR</button></span>`;
       toast('SALA CRIADA — ' + data.token);
       carregarSalas();
     } else {

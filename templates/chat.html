@@ -103,17 +103,15 @@
     </div>
   </div>
 </div>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<!-- Socket.IO local (offline) -->
+<script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
 <script>
-  // Conectar ao WebSocket
   const socket = io();
   const token = "{{ token }}";
   let username = prompt("Seu nome:") || "Anônimo";
 
-  // Avisar entrada na sala
   socket.emit('entrar', { token, username });
 
-  // Receber mensagens
   socket.on('mensagem', function(msg) {
       adicionarMensagem(msg);
   });
@@ -125,7 +123,7 @@
   function adicionarMensagem(msg) {
       const container = document.getElementById('chat-messages');
       const div = document.createElement('div');
-      div.className = 'msg' + (msg.user.startsWith('⚡') ? ' system' : '');
+      div.className = 'msg' + (msg.type === 'system' ? ' system' : '');
       div.innerHTML = '<span class="user">' + escapeHtml(msg.user) + '</span> ' +
                       '<span>' + escapeHtml(msg.text) + '</span>' +
                       '<span class="time">' + escapeHtml(msg.timestamp) + '</span>';
@@ -155,10 +153,7 @@
       input.focus();
   }
 
-  // Botão enviar
   document.getElementById('send-button').addEventListener('click', enviar);
-
-  // Enter para enviar
   document.getElementById('message-input').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
           e.preventDefault();
@@ -166,7 +161,7 @@
       }
   });
 
-  // Carregar histórico (passado pelo servidor)
+  // Carregar histórico (já sanitizado pelo servidor)
   const historico = {{ historico | tojson }};
   historico.forEach(function(msg) {
       adicionarMensagem(msg);

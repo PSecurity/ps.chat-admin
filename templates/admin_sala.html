@@ -34,6 +34,7 @@
   .btn-danger { border-color: var(--red); color: var(--red); }
   .btn-success { border-color: var(--green); color: var(--green); }
   .btn-warning { border-color: var(--yellow); color: var(--yellow); }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
   .container { width:100%; max-width:600px; margin:20px; }
   .panel {
     background: var(--panel); border:1px solid var(--border);
@@ -47,8 +48,7 @@
   th, td { padding:8px; text-align:left; border-bottom:1px solid var(--border); }
   th { color: var(--dim); font-weight:400; text-transform:uppercase; }
   .actions { display:flex; gap:6px; }
-  form { display:inline; }
-  .back-link { display:inline-block; margin-top:10px; color:var(--accent); }
+  .loading { opacity:0.5; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -60,7 +60,7 @@
   <div class="panel">
     <h2>GERENCIAR: {{ nome_sala }}</h2>
     <div style="font-size:0.7rem; color:var(--dim); margin-bottom:10px;">Token: {{ token }}</div>
-    <table>
+    <table id="tabela-membros">
       <thead><tr><th>Usuário</th><th>Ações</th></tr></thead>
       <tbody>
         {% for m in membros %}
@@ -71,26 +71,10 @@
             {{ m.has_pubkey and '🔑' or '❌' }}
           </td>
           <td class="actions">
-            <form method="POST" action="/admin/sala/{{ token }}/acao">
-              <input type="hidden" name="username" value="{{ m.username }}">
-              <input type="hidden" name="acao" value="kick">
-              <button class="btn btn-danger" onclick="return confirm('Expulsar {{ m.username }}?')">KICK</button>
-            </form>
-            <form method="POST" action="/admin/sala/{{ token }}/acao">
-              <input type="hidden" name="username" value="{{ m.username }}">
-              <input type="hidden" name="acao" value="promote">
-              <button class="btn btn-success" {{ 'disabled' if m.moderator or m.admin }}>PROMOVER</button>
-            </form>
-            <form method="POST" action="/admin/sala/{{ token }}/acao">
-              <input type="hidden" name="username" value="{{ m.username }}">
-              <input type="hidden" name="acao" value="demote">
-              <button class="btn btn-warning" {{ 'disabled' if not m.moderator }}>REBAIXAR</button>
-            </form>
-            <form method="POST" action="/admin/sala/{{ token }}/acao">
-              <input type="hidden" name="username" value="{{ m.username }}">
-              <input type="hidden" name="acao" value="block">
-              <button class="btn btn-danger" onclick="return confirm('Bloquear {{ m.username }}?')">BLOQUEAR</button>
-            </form>
+            <button class="btn btn-danger" onclick="acao('kick', '{{ m.username }}')">KICK</button>
+            <button class="btn btn-success" onclick="acao('promote', '{{ m.username }}')" {{ 'disabled' if m.moderator or m.admin }}>PROMOVER</button>
+            <button class="btn btn-warning" onclick="acao('demote', '{{ m.username }}')" {{ 'disabled' if not m.moderator }}>REBAIXAR</button>
+            <button class="btn btn-danger" onclick="acao('block', '{{ m.username }}')">BLOQUEAR</button>
           </td>
         </tr>
         {% endfor %}
@@ -101,5 +85,29 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+  async function acao(acao, username) {
+    if (!confirm(`Confirmar ${acao.toUpperCase()} de ${username}?`)) return;
+    const tabela = document.getElementById('tabela-membros');
+    tabela.classList.add('loading');
+    try {
+      const resp = await fetch('/admin/sala/{{ token }}/acao', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({acao, username})
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') {
+        location.reload();
+      } else {
+        alert(data.mensagem || 'Erro desconhecido.');
+      }
+    } catch(e) {
+      alert('Falha na comunicação com o servidor.');
+    }
+    tabela.classList.remove('loading');
+  }
+</script>
 </body>
 </html>

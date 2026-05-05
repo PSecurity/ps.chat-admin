@@ -101,7 +101,7 @@ def admin_login():
         senha = request.form.get('senha', '')
         if check_password_hash(carregar_hash_admin(), senha):
             session['admin_auth'] = True
-            session.permanent = True          # Timeout de sessão
+            session.permanent = True
             log_acesso('LOGIN_ADMIN')
             return redirect(url_for('admin_dashboard'))
         else:
@@ -202,6 +202,7 @@ def on_entrar(data):
         return
 
     join_room(token)
+    # Armazena informações do usuário
     usuarios[request.sid] = {
         'token': token,
         'username': username,
@@ -221,13 +222,22 @@ def on_entrar(data):
     salvar_historico(token, hist)
     socketio.emit('mensagem', msg_sistema, room=token)
 
-    # Se o cliente enviou chaves, retransmitir para os outros membros
+    # Envia as chaves do novo membro para todos
     if pubkey and sign_pubkey:
-        socketio.emit('mensagem', {
+        socketio.emit('chave_publica', {
             'user': username,
             'pubkey': pubkey,
             'sign_pubkey': sign_pubkey
         }, room=token)
+
+        # Envia ao novo usuário as chaves de quem já estava na sala
+        for sid, u in usuarios.items():
+            if u['token'] == token and u['pubkey'] and u['username'] != username:
+                emit('chave_publica', {
+                    'user': u['username'],
+                    'pubkey': u['pubkey'],
+                    'sign_pubkey': u['sign_pubkey']
+                })
 
     log_acesso('ENTRAR_SALA', token, f'Usuário: {username}')
 
@@ -236,24 +246,21 @@ def on_mensagem(data):
     token = data.get('token')
     if token not in salas: return
 
-    # Repassa a mensagem exatamente como recebida (criptografada ou texto plano)
-    # Apenas adiciona o username do remetente se não presente
     user_info = usuarios.get(request.sid, {})
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
 
-    # Se for mensagem em texto plano (chat web/admin), sanitizar
+    # Se for texto plano, sanitizar e adicionar tipo
     if 'text' in data and 'ciphertext' not in data:
         data['text'] = html.escape(data['text'][:2000])
         data['type'] = 'chat'
         data['timestamp'] = data.get('timestamp', datetime.now().isoformat())
-
-    # Salvar no histórico apenas mensagens de texto plano (as criptografadas não devem ser armazenadas em claro)
-    if 'text' in data:
+        # Salvar no histórico apenas mensagens de texto plano (admin/web)
         hist = carregar_historico(token)
         hist.append(data)
         salvar_historico(token, hist)
 
+    # Retransmitir a mensagem (criptografada ou não) para todos da sala
     socketio.emit('mensagem', data, room=token)
 
 @socketio.on('sala_info')

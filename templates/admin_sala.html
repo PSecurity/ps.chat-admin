@@ -4,119 +4,51 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🛡️ Gerenciar {{ nome_sala }} — PS.Chat Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #0a0010;
-    --bg2:       #0f0018;
-    --panel:     #110020;
-    --border:    #6b00c8;
-    --border2:   #9b30ff;
-    --glow:      #a855f7;
-    --glow2:     #7c3aed;
-    --text:      #d8b4fe;
-    --text2:     #e9d5ff;
-    --dim:       #7c3aed88;
-    --accent:    #c084fc;
-    --green:     #4ade80;
-    --red:       #f87171;
-    --yellow:    #facc15;
-    --scan:      rgba(168,85,247,0.04);
+    --bg: #0a0010; --panel: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --text: #d8b4fe; --accent: #c084fc; --red: #f87171; --green: #4ade80;
+    --yellow: #facc15; --dim: #7c3aed88;
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg, transparent, transparent 2px,
-      var(--scan) 2px, var(--scan) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
-  }
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at center, transparent 60%, #000000cc 100%);
-    pointer-events: none;
-    z-index: 9998;
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
   }
   header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg2);
-    box-shadow: 0 0 20px #6b00c840;
-    flex-wrap: wrap;
-    gap: 10px;
+    width:100%; padding:10px 20px; border-bottom:1px solid var(--border);
+    background: var(--panel); display:flex; align-items:center; justify-content:space-between;
   }
   .logo {
-    font-family: 'Orbitron', monospace;
-    font-weight: 900;
-    font-size: 1.1rem;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--glow), 0 0 30px var(--glow2);
-    letter-spacing: 2px;
+    font-family:'Orbitron', monospace; font-weight:900; font-size:1rem;
+    color: var(--accent); text-shadow:0 0 6px var(--glow); letter-spacing:1px;
   }
-  .logo span { color: var(--glow); }
   .btn {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.75rem;
-    padding: 5px 12px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 1px;
-    text-decoration: none;
-    display: inline-block;
+    font-family:inherit; font-size:0.7rem; padding:4px 10px; border:1px solid var(--border);
+    background:transparent; color: var(--text); cursor:pointer; transition:0.2s;
+    letter-spacing:1px; text-decoration:none; display:inline-block;
   }
-  .btn:hover { border-color: var(--glow); color: #fff; text-shadow: 0 0 8px var(--glow); box-shadow: 0 0 12px #7c3aed40; }
-  .btn-primary { border-color: var(--glow); color: var(--accent); }
+  .btn:hover { border-color: var(--glow); color:#fff; box-shadow:0 0 6px var(--glow); }
   .btn-danger { border-color: var(--red); color: var(--red); }
   .btn-success { border-color: var(--green); color: var(--green); }
   .btn-warning { border-color: var(--yellow); color: var(--yellow); }
-  .container { max-width: 800px; margin: 20px auto; padding: 16px; }
+  .container { width:100%; max-width:600px; margin:20px; }
   .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    box-shadow: 0 0 16px #6b00c830;
-    border-radius: 4px;
-    overflow: hidden;
+    background: var(--panel); border:1px solid var(--border);
+    padding:1.2rem; box-shadow:0 0 10px #6b00c820;
   }
-  .panel-titlebar {
-    display: flex; align-items: center; padding: 8px 14px; background: var(--bg2);
-    border-bottom: 1px solid var(--border); box-shadow: 0 2px 12px #6b00c820; gap: 10px;
+  .panel h2 {
+    font-family:'Orbitron', monospace; font-size:0.8rem; color:var(--accent);
+    margin-bottom:1rem; text-shadow:0 0 4px var(--glow);
   }
-  .dots { display: flex; gap: 5px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .dot-close { background: #f87171; box-shadow: 0 0 6px #f87171; }
-  .dot-min   { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
-  .dot-max   { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-  .panel-title-text {
-    font-family: 'Orbitron', monospace; font-size: 0.75rem; color: var(--accent);
-    letter-spacing: 1px; text-shadow: 0 0 6px var(--glow2); flex:1;
-  }
-  .panel-content { padding: 16px; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #6b00c830; }
-  th { color: var(--accent); font-weight: 400; text-transform: uppercase; letter-spacing: 1px; font-size: 0.65rem; background: var(--bg2); }
-  .member-row td { vertical-align: middle; }
-  .actions form { display: inline; }
-  .actions .btn { padding: 4px 8px; font-size: 0.65rem; margin: 0 2px; }
-  .back-link { margin-top: 16px; display: inline-block; color: var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+  th, td { padding:8px; text-align:left; border-bottom:1px solid var(--border); }
+  th { color: var(--dim); font-weight:400; text-transform:uppercase; }
+  .actions { display:flex; gap:6px; }
+  form { display:inline; }
+  .back-link { display:inline-block; margin-top:10px; color:var(--accent); }
 </style>
 </head>
 <body>
@@ -124,67 +56,49 @@
   <div class="logo">🛡️ PS.<span>CHAT ADMIN</span></div>
   <a href="/admin" class="btn">← VOLTAR</a>
 </header>
-
 <div class="container">
   <div class="panel">
-    <div class="panel-titlebar">
-      <div class="dots">
-        <div class="dot dot-close"></div>
-        <div class="dot dot-min"></div>
-        <div class="dot dot-max"></div>
-      </div>
-      <span class="panel-title-text">GERENCIAR: {{ nome_sala }}</span>
-      <span style="font-size:0.65rem;color:var(--dim);">{{ token }}</span>
-    </div>
-    <div class="panel-content">
-      <table>
-        <thead>
-          <tr>
-            <th>Usuário</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for m in membros %}
-          <tr class="member-row">
-            <td>
-              {% if m.admin %}👑{% elif m.moderator %}🛡️{% endif %}
-              {{ m.username }}
-            </td>
-            <td>
-              {{ m.has_pubkey and '🔑' or '❌' }}
-            </td>
-            <td class="actions">
-              <form method="POST" action="/admin/sala/{{ token }}/acao" style="display:inline;">
-                <input type="hidden" name="username" value="{{ m.username }}">
-                <input type="hidden" name="acao" value="kick">
-                <button type="submit" class="btn btn-danger" onclick="return confirm('Remover {{ m.username }}?')">KICK</button>
-              </form>
-              <form method="POST" action="/admin/sala/{{ token }}/acao" style="display:inline;">
-                <input type="hidden" name="username" value="{{ m.username }}">
-                <input type="hidden" name="acao" value="promote">
-                <button type="submit" class="btn btn-success" {{ 'disabled' if m.moderator or m.admin }}>PROMOVER</button>
-              </form>
-              <form method="POST" action="/admin/sala/{{ token }}/acao" style="display:inline;">
-                <input type="hidden" name="username" value="{{ m.username }}">
-                <input type="hidden" name="acao" value="demote">
-                <button type="submit" class="btn btn-warning" {{ 'disabled' if not m.moderator }}>REBAIXAR</button>
-              </form>
-              <form method="POST" action="/admin/sala/{{ token }}/acao" style="display:inline;">
-                <input type="hidden" name="username" value="{{ m.username }}">
-                <input type="hidden" name="acao" value="block">
-                <button type="submit" class="btn btn-danger" onclick="return confirm('Bloquear {{ m.username }}?')">BLOQUEAR</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% if not membros %}
-      <p style="text-align:center;color:var(--dim);margin-top:16px;">Nenhum membro na sala.</p>
-      {% endif %}
-    </div>
+    <h2>GERENCIAR: {{ nome_sala }}</h2>
+    <div style="font-size:0.7rem; color:var(--dim); margin-bottom:10px;">Token: {{ token }}</div>
+    <table>
+      <thead><tr><th>Usuário</th><th>Ações</th></tr></thead>
+      <tbody>
+        {% for m in membros %}
+        <tr>
+          <td>
+            {% if m.admin %}👑{% elif m.moderator %}🛡️{% endif %}
+            {{ m.username }}
+            {{ m.has_pubkey and '🔑' or '❌' }}
+          </td>
+          <td class="actions">
+            <form method="POST" action="/admin/sala/{{ token }}/acao">
+              <input type="hidden" name="username" value="{{ m.username }}">
+              <input type="hidden" name="acao" value="kick">
+              <button class="btn btn-danger" onclick="return confirm('Expulsar {{ m.username }}?')">KICK</button>
+            </form>
+            <form method="POST" action="/admin/sala/{{ token }}/acao">
+              <input type="hidden" name="username" value="{{ m.username }}">
+              <input type="hidden" name="acao" value="promote">
+              <button class="btn btn-success" {{ 'disabled' if m.moderator or m.admin }}>PROMOVER</button>
+            </form>
+            <form method="POST" action="/admin/sala/{{ token }}/acao">
+              <input type="hidden" name="username" value="{{ m.username }}">
+              <input type="hidden" name="acao" value="demote">
+              <button class="btn btn-warning" {{ 'disabled' if not m.moderator }}>REBAIXAR</button>
+            </form>
+            <form method="POST" action="/admin/sala/{{ token }}/acao">
+              <input type="hidden" name="username" value="{{ m.username }}">
+              <input type="hidden" name="acao" value="block">
+              <button class="btn btn-danger" onclick="return confirm('Bloquear {{ m.username }}?')">BLOQUEAR</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not membros %}
+    <p style="text-align:center;color:var(--dim);margin-top:10px;">Nenhum membro na sala.</p>
+    {% endif %}
   </div>
 </div>
 </body>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, json, secrets, webbrowser, html, time
+import os, json, secrets, webbrowser, html, time, socket
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -31,7 +31,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 
-# ---------- Helpers básicos ----------
+# ---------- Helpers ----------
 def carregar_ou_gerar_chave():
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE) as f: return f.read().strip()
@@ -150,7 +150,7 @@ def ip_bloqueado(ip):
     tentativas, inicio = login_attempts[ip]
     return tentativas > MAX_LOGIN_ATTEMPTS and (time.time() - inicio) < LOGIN_BLOCK_TIME
 
-# ---------- Decorator admin ----------
+# ---------- Decorator ----------
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -158,7 +158,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ========== ROTAS ADMINISTRATIVAS ==========
+# ========== ROTAS ADMIN ==========
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -313,7 +313,7 @@ def admin_gerar_qrcode(token):
         buf.seek(0)
         return Response(buf.getvalue(), mimetype='image/png')
     except ImportError:
-        return "Pillow não está instalado. Execute: pip install Pillow", 500
+        return "⚠ Pillow não instalado. Execute: pkg install python-pillow (Termux) ou pip install Pillow", 500
 
 @app.route('/admin/invite/<token>')
 @admin_required
@@ -637,16 +637,28 @@ def on_disconnect():
                 log_acesso('SALA_EFEMERA_REMOVIDA', token)
 
 # ---------- Inicialização ----------
+def obter_ip_local():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('10.254.254.254', 1))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return 'localhost'
+
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.2 iniciado")
+    print("🔥 PS.Chat Admin v2.2.3 iniciado")
     host = '0.0.0.0'
     port = 5000
-    url_admin = f"http://localhost:{port}/admin/login"
-    url_ip = f"http://{request.remote_addr}:{port}/admin/login" if request else ""
-    print(f"➡ Painel: {url_admin}")
-    # Tenta abrir o navegador; imprime o link se falhar
+    ip_local = obter_ip_local()
+    url_admin_local = f"http://localhost:{port}/admin/login"
+    url_admin_ip = f"http://{ip_local}:{port}/admin/login"
+    print(f"➡ Painel local: {url_admin_local}")
+    if ip_local != 'localhost':
+        print(f"➡ Painel rede: {url_admin_ip}")
     try:
-        webbrowser.open(url_admin)
+        webbrowser.open(url_admin_local)
     except:
-        print(f"⚠ Navegador não abriu. Acesse manualmente: {url_admin}")
+        print(f"⚠ Navegador não abriu. Acesse manualmente: {url_admin_local}")
     socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)

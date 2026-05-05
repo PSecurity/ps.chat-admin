@@ -31,7 +31,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 
-# ---------- Helpers ----------
+# ---------- Helpers (carregamento/gravação) ----------
 def carregar_ou_gerar_chave():
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE) as f: return f.read().strip()
@@ -332,24 +332,29 @@ def admin_sala_acao(token):
             break
     if not target_sid: return jsonify({'status': 'erro', 'mensagem': 'Usuário não encontrado'}), 404
 
+    admin_nome = 'Admin'
+
     if acao == 'kick':
         emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
         leave_room(target_sid, token)
         usuarios.pop(target_sid, None)
-        salvar_modlog('kick', token, 'admin_web', target)
+        salvar_modlog('kick', token, admin_nome, target)
+        notificar_sala(token, f'👢 {target} foi expulso da sala.')
         _rotacionar_sala(token)
         return jsonify({'status': 'ok'})
     elif acao == 'promote':
         if target_sid in usuarios:
             usuarios[target_sid]['moderator'] = True
             emit('promoted', {}, room=target_sid)
-            salvar_modlog('promote', token, 'admin_web', target)
+            salvar_modlog('promote', token, admin_nome, target)
+            notificar_sala(token, f'⬆️ {target} foi promovido a moderador.')
             return jsonify({'status': 'ok'})
     elif acao == 'demote':
         if target_sid in usuarios:
             usuarios[target_sid]['moderator'] = False
             emit('demoted', {}, room=target_sid)
-            salvar_modlog('demote', token, 'admin_web', target)
+            salvar_modlog('demote', token, admin_nome, target)
+            notificar_sala(token, f'⬇️ {target} foi rebaixado de moderador.')
             return jsonify({'status': 'ok'})
     elif acao == 'block':
         chave = usuarios[target_sid].get('pubkey')
@@ -363,26 +368,43 @@ def admin_sala_acao(token):
         emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
         leave_room(target_sid, token)
         usuarios.pop(target_sid, None)
-        salvar_modlog('block', token, 'admin_web', target)
+        salvar_modlog('block', token, admin_nome, target)
+        notificar_sala(token, f'🚫 {target} foi banido da sala.')
         _rotacionar_sala(token)
         return jsonify({'status': 'ok'})
     elif acao == 'mute':
         if target_sid in usuarios:
             usuarios[target_sid]['muted'] = True
             emit('muted', {}, room=target_sid)
-            salvar_modlog('mute', token, 'admin_web', target)
+            salvar_modlog('mute', token, admin_nome, target)
+            notificar_sala(token, f'🔇 {target} foi silenciado.')
             return jsonify({'status': 'ok'})
     elif acao == 'unmute':
         if target_sid in usuarios:
             usuarios[target_sid]['muted'] = False
             emit('unmuted', {}, room=target_sid)
-            salvar_modlog('unmute', token, 'admin_web', target)
+            salvar_modlog('unmute', token, admin_nome, target)
+            notificar_sala(token, f'🔈 {target} foi desilenciado.')
             return jsonify({'status': 'ok'})
     return jsonify({'status': 'erro', 'mensagem': 'Ação desconhecida'}), 400
 
 def _rotacionar_sala(token):
     if token in salas:
         socketio.emit('rotate_key', {}, room=token)
+
+def notificar_sala(token, texto):
+    """Emite uma mensagem de sistema para todos da sala."""
+    msg = {
+        'type': 'system',
+        'user': '⚡ Sistema',
+        'text': texto,
+        'timestamp': datetime.now().isoformat()
+    }
+    socketio.emit('mensagem', msg, room=token)
+    # Salvar no histórico
+    hist = carregar_historico(token)
+    hist.append(msg)
+    salvar_historico(token, hist)
 
 # ========== WEBSOCKET ==========
 @socketio.on('entrar')
@@ -539,6 +561,7 @@ def on_kick_user(data):
         leave_room(target_sid, token)
         usuarios.pop(target_sid, None)
         salvar_modlog('kick', token, user_info['username'], target)
+        notificar_sala(token, f'👢 {target} foi expulso por {user_info["username"]}.')
         _rotacionar_sala(token)
 
 @socketio.on('mute_user')
@@ -552,6 +575,7 @@ def on_mute_user(data):
             usuarios[sid]['muted'] = True
             emit('muted', {}, room=sid)
             salvar_modlog('mute', token, user_info['username'], target)
+            notificar_sala(token, f'🔇 {target} foi silenciado por {user_info["username"]}.')
             break
 
 @socketio.on('unmute_user')
@@ -565,6 +589,7 @@ def on_unmute_user(data):
             usuarios[sid]['muted'] = False
             emit('unmuted', {}, room=sid)
             salvar_modlog('unmute', token, user_info['username'], target)
+            notificar_sala(token, f'🔈 {target} foi desilenciado por {user_info["username"]}.')
             break
 
 @socketio.on('ban_user')
@@ -591,9 +616,9 @@ def on_ban_user(data):
         leave_room(target_sid, token)
         usuarios.pop(target_sid, None)
         salvar_modlog('ban', token, user_info['username'], target)
+        notificar_sala(token, f'🚫 {target} foi banido por {user_info["username"]}.')
         _rotacionar_sala(token)
 
-# ---------- Novos handlers: promote, demote, verify ----------
 @socketio.on('promote_user')
 def on_promote_user(data):
     token = data.get('token')
@@ -606,8 +631,7 @@ def on_promote_user(data):
             usuarios[sid]['moderator'] = True
             emit('promoted', {}, room=sid)
             salvar_modlog('promote', token, user_info['username'], target)
-            # Notifica quem promoveu
-            emit('erro', {'mensagem': f'{target} promovido a moderador.'})
+            notificar_sala(token, f'⬆️ {target} foi promovido a moderador por {user_info["username"]}.')
             break
 
 @socketio.on('demote_user')
@@ -622,7 +646,7 @@ def on_demote_user(data):
             usuarios[sid]['moderator'] = False
             emit('demoted', {}, room=sid)
             salvar_modlog('demote', token, user_info['username'], target)
-            emit('erro', {'mensagem': f'{target} rebaixado.'})
+            notificar_sala(token, f'⬇️ {target} foi rebaixado de moderador por {user_info["username"]}.')
             break
 
 @socketio.on('verify_request')
@@ -676,7 +700,7 @@ def obter_ip_local():
         return 'localhost'
 
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin v2.2.6 iniciado")
+    print("🔥 PS.Chat Admin v2.2.7 iniciado")
     host = '0.0.0.0'
     port = 5000
     ip_local = obter_ip_local()

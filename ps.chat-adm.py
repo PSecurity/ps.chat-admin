@@ -36,7 +36,6 @@ def carregar_ou_gerar_chave():
     return chave
 app.config['SECRET_KEY'] = carregar_ou_gerar_chave()
 
-# Hash da senha admin
 def carregar_hash_admin():
     if os.path.exists(ADMIN_HASH_FILE):
         with open(ADMIN_HASH_FILE) as f: return f.read().strip()
@@ -51,13 +50,11 @@ def salvar_hash_admin(novo_hash):
     try: os.chmod(ADMIN_HASH_FILE, 0o600)
     except: pass
 
-# Log
 def log_acesso(acao, token="", detalhe=""):
     agora = datetime.now().isoformat()
     ip = request.remote_addr
     with open(LOG_FILE, 'a') as f: f.write(f"{agora} | {acao} | {ip} | {token} | {detalhe}\n")
 
-# Histórico com limite de 200 mensagens
 def carregar_historico(token):
     caminho = os.path.join(HISTORICO_DIR, f'sala_{token}.json')
     if os.path.exists(caminho):
@@ -70,7 +67,6 @@ def salvar_historico(token, hist):
     with open(os.path.join(HISTORICO_DIR, f'sala_{token}.json'), 'w') as f:
         json.dump(hist, f, indent=2)
 
-# Salas persistentes (agora com 'senha_hash' opcional)
 def carregar_salas():
     if not os.path.exists(SALAS_FILE): return {}
     try:
@@ -81,9 +77,8 @@ def salvar_salas(salas_dict):
     with open(SALAS_FILE, 'w') as f: json.dump(salas_dict, f, indent=2)
 
 salas = carregar_salas()
-usuarios = {}  # sid: {token, username, pubkey, sign_pubkey}
+usuarios = {}
 
-# Decorator admin
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -184,13 +179,7 @@ def admin_gerar_qrcode(token):
     buf.seek(0)
     return Response(buf.getvalue(), mimetype='image/png')
 
-@app.route('/chat/<token>')
-def chat(token):
-    if token not in salas: return "Sala não encontrada ou expirada.", 404
-    historico = carregar_historico(token)
-    return render_template('chat.html', token=token, nome_sala=salas[token]['nome'], historico=historico)
-
-# ===== WEBSOCKET =====
+# ========== WEBSOCKET ==========
 
 @socketio.on('entrar')
 def on_entrar(data):
@@ -255,35 +244,21 @@ def on_mensagem(data):
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
 
-    # Mensagens efêmeras não são salvas no histórico do servidor
-    ephemeral = data.get('ephemeral', False)
-
     if 'text' in data and 'ciphertext' not in data:
         data['text'] = html.escape(data['text'][:2000])
         data['type'] = 'chat'
         data['timestamp'] = data.get('timestamp', datetime.now().isoformat())
-        if not ephemeral:
+        if not data.get('ephemeral', False):
             hist = carregar_historico(token)
             hist.append(data)
             salvar_historico(token, hist)
-
-    # Para mensagens criptografadas, também verificamos o flag ephemeral (não salvar)
-    if 'ciphertext' in data and not ephemeral:
-        # Podemos optar por não salvar mensagens criptografadas no servidor, mesmo sem ephemeral,
-        # mas aqui respeitamos o flag.
-        pass  # Já não salvamos mensagens criptografadas no servidor (ver implementação anterior)
-    elif 'ciphertext' in data and ephemeral:
-        # Não salvamos de qualquer forma
-        pass
 
     socketio.emit('mensagem', data, room=token)
 
 @socketio.on('sala_info')
 def on_sala_info(data):
     token = data.get('token')
-    if token not in salas:
-        emit('erro', {'mensagem': 'Sala inválida.'})
-        return
+    if token not in salas: return
     members = []
     for sid, u in usuarios.items():
         if u.get('token') == token:
@@ -292,6 +267,20 @@ def on_sala_info(data):
                 'has_pubkey': bool(u.get('pubkey'))
             })
     emit('sala_info', {'members': members})
+
+@socketio.on('solicitar_chave')
+def on_solicitar_chave(data):
+    token = data.get('token')
+    usuario = data.get('username')
+    if token not in salas: return
+    for sid, u in usuarios.items():
+        if u['token'] == token and u['username'] == usuario and u['pubkey']:
+            emit('chave_publica', {
+                'user': u['username'],
+                'pubkey': u['pubkey'],
+                'sign_pubkey': u['sign_pubkey']
+            })
+            break
 
 @socketio.on('disconnect')
 def on_disconnect():

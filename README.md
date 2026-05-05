@@ -241,4 +241,3 @@ Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
 ---
 
 **Desenvolvido por `PeekSecurity` – Comunicação offline, simples e segura.**
-```

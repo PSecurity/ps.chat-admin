@@ -4,219 +4,97 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>💬 {{ nome_sala }} — PS.Chat</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #0a0010;
-    --bg2:       #0f0018;
-    --panel:     #110020;
-    --border:    #6b00c8;
-    --border2:   #9b30ff;
-    --glow:      #a855f7;
-    --glow2:     #7c3aed;
-    --text:      #d8b4fe;
-    --text2:     #e9d5ff;
-    --dim:       #7c3aed88;
-    --accent:    #c084fc;
-    --green:     #4ade80;
-    --red:       #f87171;
-    --scan:      rgba(168,85,247,0.04);
+    --bg: #0a0010; --bg2: #0f0018; --panel: #110020; --border: #6b00c8;
+    --border2: #9b30ff; --glow: #a855f7; --glow2: #7c3aed;
+    --text: #d8b4fe; --text2: #e9d5ff; --dim: #7c3aed88; --accent: #c084fc;
+    --green: #4ade80; --red: #f87171; --scan: rgba(168,85,247,0.04);
   }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
+  * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    background: var(--bg);
-    color: var(--text);
+    background: var(--bg); color: var(--text);
     font-family: 'Share Tech Mono', monospace;
-    min-height: 100vh;
-    overflow-x: hidden;
+    min-height: 100vh; overflow-x: hidden;
   }
-
   body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg, transparent, transparent 2px,
-      var(--scan) 2px, var(--scan) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
+    content:''; position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan) 2px, var(--scan) 4px);
+    pointer-events:none; z-index:9999;
   }
-
   body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
+    content:''; position:fixed; inset:0;
     background: radial-gradient(ellipse at center, transparent 60%, #000000cc 100%);
-    pointer-events: none;
-    z-index: 9998;
+    pointer-events:none; z-index:9998;
   }
-
-  /* Botões (mesmo estilo do admin) */
-  .btn {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.75rem;
-    padding: 6px 14px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 1px;
-    position: relative;
-    overflow: hidden;
-  }
-  .btn:hover { border-color: var(--glow); color: #fff; text-shadow: 0 0 8px var(--glow); box-shadow: 0 0 12px #7c3aed40; }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary { border-color: var(--glow); color: var(--accent); box-shadow: inset 0 0 8px #6b00c830; }
-  .btn-primary:hover { background: #6b00c820; box-shadow: 0 0 16px var(--glow); }
-
-  .chat-container {
-    max-width: 700px;
-    margin: 20px auto;
-    padding: 16px;
-  }
-
-  .chat-panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    box-shadow: 0 0 16px #6b00c830;
-    border-radius: 4px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 80vh;
-  }
-
-  .chat-titlebar {
-    display: flex;
-    align-items: center;
-    padding: 8px 14px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 2px 12px #6b00c820;
-    gap: 10px;
-  }
-
-  .chat-titlebar .dots { display: flex; gap: 5px; }
-  .chat-titlebar .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .dot-close { background: #f87171; box-shadow: 0 0 6px #f87171; }
-  .dot-min   { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
-  .dot-max   { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-
-  .chat-title-text {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.75rem;
-    color: var(--accent);
-    letter-spacing: 1px;
-    text-shadow: 0 0 6px var(--glow2);
-    flex: 1;
-  }
-
-  .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    font-size: 0.8rem;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-
-  .chat-messages::-webkit-scrollbar { width: 5px; }
-  .chat-messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-  .msg {
-    margin-bottom: 8px;
-    padding: 6px 10px;
-    background: rgba(107,0,200,0.08);
-    border-left: 2px solid var(--border);
-    border-radius: 0 4px 4px 0;
-    word-wrap: break-word;
-  }
-
-  .msg.system {
-    border-left-color: var(--dim);
-    background: rgba(107,0,200,0.04);
-    font-style: italic;
-    color: var(--dim);
-  }
-
-  .msg .user {
-    color: var(--accent);
-    font-weight: bold;
-    margin-right: 6px;
-  }
-
-  .msg .time {
-    font-size: 0.6rem;
-    color: var(--dim);
-    margin-left: 10px;
-  }
-
-  .chat-input-area {
-    display: flex;
-    padding: 10px;
-    border-top: 1px solid var(--border);
-    background: var(--bg2);
-    gap: 8px;
-    align-items: center;
-  }
-
-  .chat-input-area input[type="text"] {
-    flex: 1;
-    padding: 8px 10px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text2);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.8rem;
-    outline: none;
-    caret-color: var(--glow);
-  }
-
-  .chat-input-area input:focus {
-    border-color: var(--glow);
-    box-shadow: 0 0 8px var(--glow2);
-  }
-
   .statusbar {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 4px 20px;
-    font-size: 0.65rem;
-    color: var(--dim);
-    border-bottom: 1px solid #6b00c830;
-    background: #0a001088;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
+    display:flex; align-items:center; gap:16px; padding:4px 20px; font-size:0.65rem;
+    color: var(--dim); border-bottom:1px solid #6b00c830; background:#0a001088;
   }
-
-  .dot-green { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 1.5s infinite; }
+  .dot-green { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); animation: blink 1.5s infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .chat-container { max-width:700px; margin:20px auto; padding:16px; }
+  .chat-panel {
+    background:var(--panel); border:1px solid var(--border); border-radius:4px;
+    box-shadow:0 0 16px #6b00c830; display:flex; flex-direction:column; height:80vh;
+  }
+  .chat-titlebar {
+    display:flex; align-items:center; padding:8px 14px; background:var(--bg2);
+    border-bottom:1px solid var(--border); box-shadow:0 2px 12px #6b00c820; gap:10px;
+  }
+  .dots { display:flex; gap:5px; }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .dot-close { background:#f87171; box-shadow:0 0 6px #f87171; }
+  .dot-min   { background:#fbbf24; box-shadow:0 0 6px #fbbf24; }
+  .dot-max   { background:#4ade80; box-shadow:0 0 6px #4ade80; }
+  .chat-title-text {
+    font-family:'Orbitron', monospace; font-size:0.75rem; color:var(--accent);
+    letter-spacing:1px; text-shadow:0 0 6px var(--glow2); flex:1;
+  }
+  .chat-messages {
+    flex:1; overflow-y:auto; padding:12px; font-size:0.8rem;
+    scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+  }
+  .chat-messages::-webkit-scrollbar { width:5px; }
+  .chat-messages::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+  .msg {
+    margin-bottom:8px; padding:6px 10px; background:rgba(107,0,200,0.08);
+    border-left:2px solid var(--border); border-radius:0 4px 4px 0; word-wrap:break-word;
+  }
+  .msg.system { border-left-color:var(--dim); background:rgba(107,0,200,0.04); font-style:italic; color:var(--dim); }
+  .msg .user { color:var(--accent); font-weight:bold; margin-right:6px; }
+  .msg .time { font-size:0.6rem; color:var(--dim); margin-left:10px; }
+  .chat-input-area {
+    display:flex; padding:10px; border-top:1px solid var(--border); background:var(--bg2); gap:8px; align-items:center;
+  }
+  .chat-input-area input[type="text"] {
+    flex:1; padding:8px 10px; background:var(--bg); border:1px solid var(--border);
+    color:var(--text2); font-family:'Share Tech Mono', monospace; font-size:0.8rem; outline:none; caret-color:var(--glow);
+  }
+  .chat-input-area input:focus { border-color:var(--glow); box-shadow:0 0 8px var(--glow2); }
+  .btn {
+    font-family:'Share Tech Mono', monospace; font-size:0.75rem; padding:6px 14px;
+    border:1px solid var(--border); background:transparent; color:var(--text);
+    cursor:pointer; transition:all 0.15s; letter-spacing:1px;
+  }
+  .btn:hover { border-color:var(--glow); color:#fff; text-shadow:0 0 8px var(--glow); box-shadow:0 0 12px #7c3aed40; }
+  .btn-primary { border-color:var(--glow); color:var(--accent); box-shadow:inset 0 0 8px #6b00c830; }
+  .btn-primary:hover { background:#6b00c820; box-shadow:0 0 16px var(--glow); }
 </style>
 </head>
 <body>
-
 <div class="statusbar">
   <span><i class="dot-green"></i> CONECTADO</span>
   <span>SALA: {{ nome_sala }}</span>
 </div>
-
 <div class="chat-container">
   <div class="chat-panel">
     <div class="chat-titlebar">
-      <div class="dots">
-        <div class="dot dot-close"></div>
-        <div class="dot dot-min"></div>
-        <div class="dot dot-max"></div>
-      </div>
+      <div class="dots"><div class="dot dot-close"></div><div class="dot dot-min"></div><div class="dot dot-max"></div></div>
       <span class="chat-title-text">{{ nome_sala }}</span>
       <span style="font-size:0.65rem;color:var(--dim);">TOKEN: {{ token }}</span>
     </div>
-
     <div class="chat-messages" id="chat-messages">
       {% for msg in historico %}
         <div class="msg {{ 'system' if msg.user.startswith('⚡') else '' }}">
@@ -226,29 +104,21 @@
         </div>
       {% endfor %}
     </div>
-
     <div class="chat-input-area">
       <input type="text" id="message-input" placeholder="Digite sua mensagem..." maxlength="2000" autofocus>
       <button class="btn btn-primary" onclick="enviar()">ENVIAR</button>
     </div>
   </div>
 </div>
-
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
 <script>
   const socket = io();
   const token = "{{ token }}";
   const username = prompt("Seu nome:") || "Anônimo";
-
   socket.emit('entrar', { token, username });
 
-  socket.on('mensagem', (msg) => {
-    adicionarMensagem(msg);
-  });
-
-  socket.on('erro', (data) => {
-    alert(data.mensagem);
-  });
+  socket.on('mensagem', (msg) => adicionarMensagem(msg));
+  socket.on('erro', (data) => alert(data.mensagem));
 
   function adicionarMensagem(msg) {
     const div = document.getElementById('chat-messages');
@@ -271,24 +141,16 @@
     const input = document.getElementById('message-input');
     const text = input.value.trim();
     if (!text) return;
-    socket.emit('mensagem', {
-      token,
-      text,
-      timestamp: new Date().toISOString()
-    });
+    socket.emit('mensagem', { token, text, timestamp: new Date().toISOString() });
     input.value = '';
     input.focus();
   }
 
-  // Enviar com Enter
   document.getElementById('message-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      enviar();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); enviar(); }
   });
 
-  // Inserir histórico inicial
+  // Histórico inicial
   const historicoInicial = {{ historico | tojson }};
   historicoInicial.forEach(msg => adicionarMensagem(msg));
 </script>

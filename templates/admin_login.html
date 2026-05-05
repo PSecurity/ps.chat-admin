@@ -1,75 +1,71 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Admin - PS.Chat</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #0a0010;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: 'Share Tech Mono', monospace;
-        }
-        .login-box {
-            background: #0f0018;
-            border: 1px solid #6b00c8;
-            padding: 40px 30px;
-            width: 320px;
-            text-align: center;
-            box-shadow: 0 0 30px #7c3aed40;
-        }
-        h2 {
-            color: #c084fc;
-            font-family: 'Orbitron', monospace;
-            margin-bottom: 20px;
-        }
-        input {
-            width: 100%;
-            background: #0a0015;
-            border: 1px solid #6b00c8;
-            color: #e9d5ff;
-            padding: 12px;
-            margin: 15px 0;
-            font-family: monospace;
-            outline: none;
-        }
-        input:focus {
-            border-color: #c084fc;
-            box-shadow: 0 0 8px #a855f7;
-        }
-        button {
-            background: transparent;
-            border: 1px solid #c084fc;
-            color: #c084fc;
-            padding: 10px 20px;
-            width: 100%;
-            cursor: pointer;
-            font-family: monospace;
-            transition: 0.2s;
-        }
-        button:hover {
-            background: #6b00c820;
-            box-shadow: 0 0 15px #c084fc;
-        }
-        .erro {
-            color: #f87171;
-            margin-top: 15px;
-            font-size: 0.8rem;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔐 PS.Chat Admin — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0010; --bg2: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --glow2: #7c3aed; --text: #d8b4fe; --accent: #c084fc; --red: #f87171;
+    --scan: rgba(168,85,247,0.04);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan) 2px, var(--scan) 4px);
+    pointer-events:none; z-index:9999;
+  }
+  body::after {
+    content:''; position:fixed; inset:0;
+    background: radial-gradient(ellipse at center, transparent 60%, #000000cc 100%);
+    pointer-events:none; z-index:9998;
+  }
+  .login-box {
+    background: var(--bg2); border:1px solid var(--border);
+    padding: 32px; width: 340px; box-shadow: 0 0 30px #6b00c840;
+    position: relative; z-index: 1;
+  }
+  .logo {
+    font-family: 'Orbitron', monospace; font-weight:900; font-size:1.2rem;
+    color: var(--accent); text-shadow: 0 0 12px var(--glow), 0 0 30px var(--glow2);
+    letter-spacing:2px; text-align:center; margin-bottom:24px;
+  }
+  .logo span { color: var(--glow); }
+  label {
+    display:block; font-size:0.7rem; color: var(--glow); margin-bottom:4px; letter-spacing:1px;
+  }
+  input[type="password"] {
+    width:100%; padding:8px; background: var(--bg); border:1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace; font-size:0.8rem;
+    outline:none; caret-color: var(--glow); margin-bottom:16px;
+  }
+  input:focus { border-color: var(--glow); box-shadow:0 0 8px var(--glow2); }
+  .btn {
+    width:100%; padding:8px; border:1px solid var(--glow); background:transparent;
+    color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size:0.8rem;
+    cursor:pointer; letter-spacing:2px; transition:0.2s;
+  }
+  .btn:hover { background:#6b00c820; box-shadow:0 0 16px var(--glow); }
+  .erro { color: var(--red); font-size:0.7rem; margin-top:8px; text-align:center; }
+</style>
 </head>
 <body>
-    <div class="login-box">
-        <h2>👾 PS.Chat Admin</h2>
-        <form method="post">
-            <input type="password" name="senha" placeholder="Senha" autofocus>
-            <button type="submit">Entrar</button>
-        </form>
-        {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-    </div>
+<div class="login-box">
+  <div class="logo">🔐 PS.<span>CHAT ADMIN</span></div>
+  <form method="POST">
+    <label for="senha">SENHA</label>
+    <input type="password" id="senha" name="senha" autofocus>
+    <button type="submit" class="btn">AUTENTICAR</button>
+  </form>
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+</div>
 </body>
 </html>

@@ -20,7 +20,6 @@ SENHA_PADRAO = 'PeekAdmin2025'
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading')
 
-# Tempo de sessão do admin (30 minutos)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 os.makedirs(LOGS_DIR, exist_ok=True)
@@ -71,7 +70,7 @@ def salvar_historico(token, hist):
     with open(os.path.join(HISTORICO_DIR, f'sala_{token}.json'), 'w') as f:
         json.dump(hist, f, indent=2)
 
-# Salas persistentes
+# Salas persistentes (agora com 'senha_hash' opcional)
 def carregar_salas():
     if not os.path.exists(SALAS_FILE): return {}
     try:
@@ -123,10 +122,14 @@ def admin_dashboard():
 @admin_required
 def criar_sala():
     nome = request.form.get('nome', 'Sala sem nome').strip()[:50]
+    senha = request.form.get('senha', '').strip()
     token = secrets.token_hex(4)
-    salas[token] = {"nome": nome, "criador": request.remote_addr}
+    sala = {"nome": nome, "criador": request.remote_addr}
+    if senha:
+        sala['senha_hash'] = generate_password_hash(senha)
+    salas[token] = sala
     salvar_salas(salas)
-    log_acesso('CRIAR_SALA', token, f'Nome: {nome}')
+    log_acesso('CRIAR_SALA', token, f'Nome: {nome}, Protegida: {bool(senha)}')
     return jsonify({'token': token, 'nome': nome})
 
 @app.route('/admin/excluir_sala/<token>', methods=['DELETE'])
@@ -181,7 +184,6 @@ def admin_gerar_qrcode(token):
     buf.seek(0)
     return Response(buf.getvalue(), mimetype='image/png')
 
-# ===== ROTA DO CHAT (USUÁRIO) =====
 @app.route('/chat/<token>')
 def chat(token):
     if token not in salas: return "Sala não encontrada ou expirada.", 404
@@ -196,13 +198,19 @@ def on_entrar(data):
     username = data.get('username', 'Anônimo')[:50]
     pubkey = data.get('pubkey')
     sign_pubkey = data.get('sign_pubkey')
+    senha = data.get('senha', '')
 
     if token not in salas:
         emit('erro', {'mensagem': 'Sala inválida.'})
         return
 
+    sala = salas[token]
+    if 'senha_hash' in sala:
+        if not senha or not check_password_hash(sala['senha_hash'], senha):
+            emit('erro', {'mensagem': 'Senha da sala incorreta.'})
+            return
+
     join_room(token)
-    # Armazena informações do usuário
     usuarios[request.sid] = {
         'token': token,
         'username': username,
@@ -210,7 +218,6 @@ def on_entrar(data):
         'sign_pubkey': sign_pubkey
     }
 
-    # Mensagem de sistema sanitizada
     msg_sistema = {
         'type': 'system',
         'user': '⚡ Sistema',
@@ -222,7 +229,6 @@ def on_entrar(data):
     salvar_historico(token, hist)
     socketio.emit('mensagem', msg_sistema, room=token)
 
-    # Envia as chaves do novo membro para todos
     if pubkey and sign_pubkey:
         socketio.emit('chave_publica', {
             'user': username,
@@ -230,7 +236,6 @@ def on_entrar(data):
             'sign_pubkey': sign_pubkey
         }, room=token)
 
-        # Envia ao novo usuário as chaves de quem já estava na sala
         for sid, u in usuarios.items():
             if u['token'] == token and u['pubkey'] and u['username'] != username:
                 emit('chave_publica', {
@@ -250,17 +255,27 @@ def on_mensagem(data):
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
 
-    # Se for texto plano, sanitizar e adicionar tipo
+    # Mensagens efêmeras não são salvas no histórico do servidor
+    ephemeral = data.get('ephemeral', False)
+
     if 'text' in data and 'ciphertext' not in data:
         data['text'] = html.escape(data['text'][:2000])
         data['type'] = 'chat'
         data['timestamp'] = data.get('timestamp', datetime.now().isoformat())
-        # Salvar no histórico apenas mensagens de texto plano (admin/web)
-        hist = carregar_historico(token)
-        hist.append(data)
-        salvar_historico(token, hist)
+        if not ephemeral:
+            hist = carregar_historico(token)
+            hist.append(data)
+            salvar_historico(token, hist)
 
-    # Retransmitir a mensagem (criptografada ou não) para todos da sala
+    # Para mensagens criptografadas, também verificamos o flag ephemeral (não salvar)
+    if 'ciphertext' in data and not ephemeral:
+        # Podemos optar por não salvar mensagens criptografadas no servidor, mesmo sem ephemeral,
+        # mas aqui respeitamos o flag.
+        pass  # Já não salvamos mensagens criptografadas no servidor (ver implementação anterior)
+    elif 'ciphertext' in data and ephemeral:
+        # Não salvamos de qualquer forma
+        pass
+
     socketio.emit('mensagem', data, room=token)
 
 @socketio.on('sala_info')
@@ -296,7 +311,6 @@ def on_disconnect():
             socketio.emit('mensagem', msg_sistema, room=token)
             log_acesso('SAIR_SALA', token, f'Usuário: {user["username"]}')
 
-# ===== INÍCIO =====
 if __name__ == '__main__':
     print("🔥 PS.Chat Admin v2.0 iniciado em http://0.0.0.0:5000")
     webbrowser.open('http://localhost:5000/admin')

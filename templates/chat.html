@@ -96,63 +96,81 @@
       <span style="font-size:0.65rem;color:var(--dim);">TOKEN: {{ token }}</span>
     </div>
     <div class="chat-messages" id="chat-messages">
-      {% for msg in historico %}
-        <div class="msg {{ 'system' if msg.user.startswith('⚡') else '' }}">
-          <span class="user">{{ msg.user }}</span>
-          <span>{{ msg.text }}</span>
-          <span class="time">{{ msg.timestamp }}</span>
-        </div>
-      {% endfor %}
     </div>
     <div class="chat-input-area">
       <input type="text" id="message-input" placeholder="Digite sua mensagem..." maxlength="2000" autofocus>
-      <button class="btn btn-primary" onclick="enviar()">ENVIAR</button>
+      <button class="btn btn-primary" id="send-button">ENVIAR</button>
     </div>
   </div>
 </div>
-<script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
+  // Conectar ao WebSocket
   const socket = io();
   const token = "{{ token }}";
-  const username = prompt("Seu nome:") || "Anônimo";
+  let username = prompt("Seu nome:") || "Anônimo";
+
+  // Avisar entrada na sala
   socket.emit('entrar', { token, username });
 
-  socket.on('mensagem', (msg) => adicionarMensagem(msg));
-  socket.on('erro', (data) => alert(data.mensagem));
+  // Receber mensagens
+  socket.on('mensagem', function(msg) {
+      adicionarMensagem(msg);
+  });
+
+  socket.on('erro', function(data) {
+      alert(data.mensagem);
+  });
 
   function adicionarMensagem(msg) {
-    const div = document.getElementById('chat-messages');
-    const msgDiv = document.createElement('div');
-    msgDiv.className = 'msg' + (msg.user.startsWith('⚡') ? ' system' : '');
-    msgDiv.innerHTML = `<span class="user">${escapeHtml(msg.user)}</span>
-                        <span>${escapeHtml(msg.text)}</span>
-                        <span class="time">${msg.timestamp}</span>`;
-    div.appendChild(msgDiv);
-    div.scrollTop = div.scrollHeight;
+      const container = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = 'msg' + (msg.user.startsWith('⚡') ? ' system' : '');
+      div.innerHTML = '<span class="user">' + escapeHtml(msg.user) + '</span> ' +
+                      '<span>' + escapeHtml(msg.text) + '</span>' +
+                      '<span class="time">' + escapeHtml(msg.timestamp) + '</span>';
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
   }
 
   function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(text));
-    return div.innerHTML;
+      return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
   }
 
   function enviar() {
-    const input = document.getElementById('message-input');
-    const text = input.value.trim();
-    if (!text) return;
-    socket.emit('mensagem', { token, text, timestamp: new Date().toISOString() });
-    input.value = '';
-    input.focus();
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+      if (!text) return;
+      socket.emit('mensagem', {
+          token: token,
+          text: text,
+          timestamp: new Date().toISOString()
+      });
+      input.value = '';
+      input.focus();
   }
 
-  document.getElementById('message-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); enviar(); }
+  // Botão enviar
+  document.getElementById('send-button').addEventListener('click', enviar);
+
+  // Enter para enviar
+  document.getElementById('message-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+          e.preventDefault();
+          enviar();
+      }
   });
 
-  // Histórico inicial
-  const historicoInicial = {{ historico | tojson }};
-  historicoInicial.forEach(msg => adicionarMensagem(msg));
+  // Carregar histórico (passado pelo servidor)
+  const historico = {{ historico | tojson }};
+  historico.forEach(function(msg) {
+      adicionarMensagem(msg);
+  });
 </script>
 </body>
 </html>

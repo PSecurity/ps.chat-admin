@@ -1,113 +1,23 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🛡️ Gerenciar {{ nome_sala }} — PS.Chat Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0010; --panel: #0f0018; --border: #6b00c8; --glow: #a855f7;
-    --text: #d8b4fe; --accent: #c084fc; --red: #f87171; --green: #4ade80;
-    --yellow: #facc15; --dim: #7c3aed88;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: 'Share Tech Mono', monospace; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center;
-  }
-  header {
-    width:100%; padding:10px 20px; border-bottom:1px solid var(--border);
-    background: var(--panel); display:flex; align-items:center; justify-content:space-between;
-  }
-  .logo {
-    font-family:'Orbitron', monospace; font-weight:900; font-size:1rem;
-    color: var(--accent); text-shadow:0 0 6px var(--glow); letter-spacing:1px;
-  }
-  .btn {
-    font-family:inherit; font-size:0.7rem; padding:4px 10px; border:1px solid var(--border);
-    background:transparent; color: var(--text); cursor:pointer; transition:0.2s;
-    letter-spacing:1px; text-decoration:none; display:inline-block;
-  }
-  .btn:hover { border-color: var(--glow); color:#fff; box-shadow:0 0 6px var(--glow); }
-  .btn-danger { border-color: var(--red); color: var(--red); }
-  .btn-success { border-color: var(--green); color: var(--green); }
-  .btn-warning { border-color: var(--yellow); color: var(--yellow); }
-  .btn:disabled { opacity:0.4; cursor:not-allowed; }
-  .container { width:100%; max-width:600px; margin:20px; }
-  .panel {
-    background: var(--panel); border:1px solid var(--border);
-    padding:1.2rem; box-shadow:0 0 10px #6b00c820;
-  }
-  .panel h2 {
-    font-family:'Orbitron', monospace; font-size:0.8rem; color:var(--accent);
-    margin-bottom:1rem; text-shadow:0 0 4px var(--glow);
-  }
-  table { width:100%; border-collapse:collapse; font-size:0.75rem; }
-  th, td { padding:8px; text-align:left; border-bottom:1px solid var(--border); }
-  th { color: var(--dim); font-weight:400; text-transform:uppercase; }
-  .actions { display:flex; gap:6px; }
-  .loading { opacity:0.5; pointer-events:none; }
-</style>
-</head>
-<body>
-<header>
-  <div class="logo">🛡️ PS.<span>CHAT ADMIN</span></div>
-  <a href="/admin" class="btn">← VOLTAR</a>
-</header>
-<div class="container">
-  <div class="panel">
-    <h2>GERENCIAR: {{ nome_sala }}</h2>
-    <div style="font-size:0.7rem; color:var(--dim); margin-bottom:10px;">Token: {{ token }}</div>
-    <table id="tabela-membros">
-      <thead><tr><th>Usuário</th><th>Ações</th></tr></thead>
-      <tbody>
-        {% for m in membros %}
-        <tr>
-          <td>
-            {% if m.admin %}👑{% elif m.moderator %}🛡️{% endif %}
-            {{ m.username }}
-            {{ m.has_pubkey and '🔑' or '❌' }}
-          </td>
-          <td class="actions">
-            <button class="btn btn-danger" onclick="acao('kick', '{{ m.username }}')">KICK</button>
-            <button class="btn btn-success" onclick="acao('promote', '{{ m.username }}')" {{ 'disabled' if m.moderator or m.admin }}>PROMOVER</button>
-            <button class="btn btn-warning" onclick="acao('demote', '{{ m.username }}')" {{ 'disabled' if not m.moderator }}>REBAIXAR</button>
-            <button class="btn btn-danger" onclick="acao('block', '{{ m.username }}')">BLOQUEAR</button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% if not membros %}
-    <p style="text-align:center;color:var(--dim);margin-top:10px;">Nenhum membro na sala.</p>
-    {% endif %}
-  </div>
-</div>
-
 <script>
   async function acao(acao, username) {
     if (!confirm(`Confirmar ${acao.toUpperCase()} de ${username}?`)) return;
-    const tabela = document.getElementById('tabela-membros');
-    tabela.classList.add('loading');
+    const formData = new URLSearchParams();
+    formData.append('acao', acao);
+    formData.append('username', username);
     try {
       const resp = await fetch('/admin/sala/{{ token }}/acao', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({acao, username})
+        body: formData
       });
-      const data = await resp.json();
-      if (data.status === 'ok') {
-        location.reload();
-      } else {
-        alert(data.mensagem || 'Erro desconhecido.');
+      if (!resp.ok) {
+        const err = await resp.json();
+        alert(err.mensagem || 'Erro desconhecido.');
+        return;
       }
+      location.reload();
     } catch(e) {
       alert('Falha na comunicação com o servidor.');
     }
-    tabela.classList.remove('loading');
   }
 </script>
-</body>
-</html>

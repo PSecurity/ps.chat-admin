@@ -4,7 +4,7 @@
 import os, json, secrets, webbrowser, html
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
@@ -24,7 +24,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 
-# ---------- Helpers ----------
+# ---------- Helpers (mesmos das versões anteriores) ----------
 def carregar_ou_gerar_chave():
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE) as f: return f.read().strip()
@@ -76,7 +76,7 @@ def salvar_salas(salas_dict):
     with open(SALAS_FILE, 'w') as f: json.dump(salas_dict, f, indent=2)
 
 salas = carregar_salas()
-usuarios = {}                    # sid -> {token, username, pubkey, sign_pubkey, admin}
+usuarios = {}                    # sid -> {token, username, pubkey, sign_pubkey, admin, moderator}
 
 def admin_required(f):
     @wraps(f)
@@ -177,6 +177,70 @@ def admin_gerar_qrcode(token):
     buf.seek(0)
     return Response(buf.getvalue(), mimetype='image/png')
 
+# ---------- Nova rota para gerenciar sala ----------
+@app.route('/admin/sala/<token>')
+@admin_required
+def admin_sala(token):
+    if token not in salas: return "Sala não encontrada", 404
+    # Coleta membros da sala
+    membros = []
+    for sid, u in usuarios.items():
+        if u.get('token') == token:
+            membros.append({
+                'username': u['username'],
+                'admin': u.get('admin', False),
+                'moderator': u.get('moderator', False),
+                'has_pubkey': bool(u.get('pubkey'))
+            })
+    return render_template('admin_sala.html', token=token, nome_sala=salas[token]['nome'], membros=membros)
+
+@app.route('/admin/sala/<token>/acao', methods=['POST'])
+@admin_required
+def admin_sala_acao(token):
+    if token not in salas: return jsonify({'status': 'erro', 'mensagem': 'Sala inválida'}), 404
+    acao = request.form.get('acao')
+    target = request.form.get('username')
+    if not target or not acao:
+        return jsonify({'status': 'erro', 'mensagem': 'Parâmetros insuficientes'}), 400
+
+    # Encontra o sid do usuário alvo
+    target_sid = None
+    for sid, u in usuarios.items():
+        if u.get('token') == token and u['username'] == target:
+            target_sid = sid
+            break
+    if not target_sid:
+        return jsonify({'status': 'erro', 'mensagem': 'Usuário não encontrado'}), 404
+
+    if acao == 'kick':
+        # Remove o usuário da sala
+        socketio.emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
+        leave_room(target_sid, token)
+        usuarios.pop(target_sid, None)
+        log_acesso('KICK', token, f'Usuário {target} removido')
+        return jsonify({'status': 'ok'})
+    elif acao == 'promote':
+        if target_sid in usuarios:
+            usuarios[target_sid]['moderator'] = True
+            emit('promoted', {'status': 'moderator'}, room=target_sid)
+            log_acesso('PROMOTE', token, f'{target} promovido a moderador')
+            return jsonify({'status': 'ok'})
+    elif acao == 'demote':
+        if target_sid in usuarios:
+            usuarios[target_sid]['moderator'] = False
+            emit('demoted', {}, room=target_sid)
+            log_acesso('DEMOTE', token, f'{target} rebaixado')
+            return jsonify({'status': 'ok'})
+    elif acao == 'block':
+        # Bloquear usuário (remover e impedir reentrada com mesmo nome por X minutos)
+        # Simples: apenas remove agora
+        socketio.emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
+        leave_room(target_sid, token)
+        usuarios.pop(target_sid, None)
+        log_acesso('BLOCK', token, f'Usuário {target} bloqueado')
+        return jsonify({'status': 'ok'})
+    return jsonify({'status': 'erro', 'mensagem': 'Ação desconhecida'}), 400
+
 # ---------- WebSocket ----------
 @socketio.on('entrar')
 def on_entrar(data):
@@ -209,7 +273,8 @@ def on_entrar(data):
         'username': username,
         'pubkey': pubkey,
         'sign_pubkey': sign_pubkey,
-        'admin': is_admin
+        'admin': is_admin,
+        'moderator': False
     }
 
     prefix = "👑 Admin " if is_admin else ""
@@ -234,7 +299,6 @@ def on_entrar(data):
             'sign_pubkey': sign_pubkey
         }, room=token)
 
-        # Enviar chaves de membros existentes ao novo usuário
         for sid, u in usuarios.items():
             if u['token'] == token and u['pubkey'] and u['username'] != username:
                 emit('chave_publica', {
@@ -248,14 +312,14 @@ def on_mensagem(data):
     token = data.get('token')
     if token not in salas: return
 
-    # Retransmite a mensagem para todos (criptografada com room key ou não)
     user_info = usuarios.get(request.sid, {})
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
     if user_info.get('admin'):
         data['admin'] = True
+    if user_info.get('moderator'):
+        data['moderator'] = True
 
-    # Evita salvar conteúdo criptografado no servidor
     if 'ciphertext' not in data and 'text' in data:
         data['text'] = html.escape(data['text'][:2000])
         if not data.get('ephemeral'):
@@ -267,7 +331,6 @@ def on_mensagem(data):
 
 @socketio.on('room_key')
 def on_room_key(data):
-    # Roteia a chave de sala (criptografada) para o destinatário específico
     token = data.get('token')
     dest = data.get('destinatario')
     for sid, u in usuarios.items():
@@ -285,7 +348,8 @@ def on_sala_info(data):
             members.append({
                 'username': u['username'],
                 'has_pubkey': bool(u.get('pubkey')),
-                'admin': u.get('admin', False)
+                'admin': u.get('admin', False),
+                'moderator': u.get('moderator', False)
             })
     emit('sala_info', {'members': members})
 
@@ -302,6 +366,28 @@ def on_solicitar_chave(data):
                 'sign_pubkey': u['sign_pubkey']
             })
             break
+
+@socketio.on('kick_user')
+def on_kick_user(data):
+    """Admin ou moderador remove um usuário da sala."""
+    token = data.get('token')
+    target = data.get('username')
+    user_info = usuarios.get(request.sid, {})
+    if not user_info.get('admin') and not user_info.get('moderator'):
+        emit('erro', {'mensagem': 'Sem permissão.'})
+        return
+    if token not in salas:
+        return
+    target_sid = None
+    for sid, u in usuarios.items():
+        if u.get('token') == token and u['username'] == target:
+            target_sid = sid
+            break
+    if target_sid:
+        socketio.emit('kick', {'mensagem': f'Você foi removido por {user_info["username"]}.'}, room=target_sid)
+        leave_room(target_sid, token)
+        usuarios.pop(target_sid, None)
+        log_acesso('KICK_CMD', token, f'{target} removido por {user_info["username"]}')
 
 @socketio.on('disconnect')
 def on_disconnect():

@@ -7,32 +7,27 @@ import secrets
 from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
 # ===== CONFIGURAÇÕES =====
 HISTORICO_DIR = 'historico'
 LOGS_DIR = 'logs'
-# CORREÇÃO AQUI: caminho do arquivo de log
-LOG_FILE = os.path.join(LOGS_DIR, 'acesso.log')   # ou simplesmente 'logs/acesso.log'
+LOG_FILE = os.path.join(LOGS_DIR, 'acesso.log')
 ADMIN_HASH_FILE = 'admin.hash'
 SECRET_FILE = 'secret.key'
 SALAS_FILE = 'salas.json'
-
 SENHA_PADRAO = 'PeekAdmin2025'
 
-# ===== INICIALIZAÇÃO DO APP =====
+# ===== INICIALIZAÇÃO =====
 app = Flask(__name__)
-app.config['SECRET_KEY'] = None
 socketio = SocketIO(app, async_mode='threading')
 
-# ===== GARANTIR DIRETÓRIOS =====
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 
-# ===== FUNÇÕES AUXILIARES =====
-
+# ===== CHAVE SECRETA PERSISTENTE =====
 def carregar_ou_gerar_chave():
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE, 'r') as f:
@@ -48,7 +43,7 @@ def carregar_ou_gerar_chave():
 
 app.config['SECRET_KEY'] = carregar_ou_gerar_chave()
 
-
+# ===== MANIPULAÇÃO DE SENHA =====
 def carregar_hash_admin():
     if os.path.exists(ADMIN_HASH_FILE):
         with open(ADMIN_HASH_FILE, 'r') as f:
@@ -62,7 +57,6 @@ def carregar_hash_admin():
         pass
     return h
 
-
 def salvar_hash_admin(novo_hash):
     with open(ADMIN_HASH_FILE, 'w') as f:
         f.write(novo_hash)
@@ -71,7 +65,7 @@ def salvar_hash_admin(novo_hash):
     except:
         pass
 
-
+# ===== LOGS =====
 def log_acesso(acao, token="", detalhe=""):
     agora = datetime.now().isoformat()
     ip = request.remote_addr
@@ -79,7 +73,7 @@ def log_acesso(acao, token="", detalhe=""):
     with open(LOG_FILE, 'a') as f:
         f.write(linha)
 
-
+# ===== HISTÓRICO =====
 def carregar_historico(token):
     caminho = os.path.join(HISTORICO_DIR, f'sala_{token}.json')
     if os.path.exists(caminho):
@@ -87,13 +81,12 @@ def carregar_historico(token):
             return json.load(f)
     return []
 
-
 def salvar_historico(token, historico):
     caminho = os.path.join(HISTORICO_DIR, f'sala_{token}.json')
     with open(caminho, 'w') as f:
         json.dump(historico, f, indent=2)
 
-
+# ===== SALAS PERSISTENTES =====
 def carregar_salas():
     if not os.path.exists(SALAS_FILE):
         return {}
@@ -103,16 +96,12 @@ def carregar_salas():
     except:
         return {}
 
-
 def salvar_salas(salas_dict):
     with open(SALAS_FILE, 'w') as f:
         json.dump(salas_dict, f, indent=2)
 
-
-# ===== ESTADO GLOBAL =====
 salas = carregar_salas()
-usuarios = {}   # {request.sid: {"token": ..., "username": ...}}
-
+usuarios = {}  # {sid: {"token": ..., "username": ...}}
 
 # ===== DECORADOR ADMIN =====
 def admin_required(f):
@@ -123,16 +112,14 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-# ===== ROTAS ADMIN =====
+# ========== ROTAS ==========
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     erro = None
     if request.method == 'POST':
         senha = request.form.get('senha', '')
-        admin_hash = carregar_hash_admin()
-        if check_password_hash(admin_hash, senha):
+        if check_password_hash(carregar_hash_admin(), senha):
             session['admin_auth'] = True
             log_acesso('LOGIN_ADMIN')
             return redirect(url_for('admin_dashboard'))
@@ -141,18 +128,15 @@ def admin_login():
             erro = 'Senha incorreta.'
     return render_template('admin_login.html', erro=erro)
 
-
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_auth', None)
     return redirect(url_for('admin_login'))
 
-
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
     return render_template('admin_dashboard.html', salas=salas)
-
 
 @app.route('/admin/criar_sala', methods=['POST'])
 @admin_required
@@ -163,7 +147,6 @@ def criar_sala():
     salvar_salas(salas)
     log_acesso('CRIAR_SALA', token, f'Nome: {nome}')
     return jsonify({'token': token, 'nome': nome})
-
 
 @app.route('/admin/excluir_sala/<token>', methods=['DELETE'])
 @admin_required
@@ -176,12 +159,10 @@ def excluir_sala(token):
         return jsonify({'status': 'ok'})
     return jsonify({'status': 'erro', 'mensagem': 'Sala não encontrada'}), 404
 
-
 @app.route('/admin/listar_salas')
 @admin_required
 def listar_salas():
     return jsonify(salas)
-
 
 @app.route('/admin/logs')
 @admin_required
@@ -193,7 +174,6 @@ def admin_logs():
         return render_template('admin_logs.html', logs=linhas)
     return render_template('admin_logs.html', logs=[])
 
-
 @app.route('/admin/alterar_senha', methods=['POST'])
 @admin_required
 def alterar_senha():
@@ -201,32 +181,27 @@ def alterar_senha():
     nova_senha = request.form.get('nova_senha', '')
     if len(nova_senha) < 6:
         return jsonify({'status': 'erro', 'mensagem': 'Nova senha deve ter pelo menos 6 caracteres.'})
-    admin_hash = carregar_hash_admin()
-    if not check_password_hash(admin_hash, senha_atual):
+    if not check_password_hash(carregar_hash_admin(), senha_atual):
         log_acesso('FALHA_ALTERAR_SENHA')
         return jsonify({'status': 'erro', 'mensagem': 'Senha atual incorreta.'})
-    novo_hash = generate_password_hash(nova_senha)
-    salvar_hash_admin(novo_hash)
+    salvar_hash_admin(generate_password_hash(nova_senha))
     session.pop('admin_auth', None)
     log_acesso('SENHA_ALTERADA')
     return jsonify({'status': 'ok'})
-
 
 @app.route('/admin/gerar_qrcode/<token>')
 @admin_required
 def admin_gerar_qrcode(token):
     if token not in salas:
         return "Sala não encontrada", 404
-    import qrcode
-    import io
+    import qrcode, io
     img = qrcode.make(token)
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
     return Response(buf.getvalue(), mimetype='image/png')
 
-
-# ===== CHAT DO USUÁRIO =====
+# ===== CHAT USUÁRIO =====
 @app.route('/chat/<token>')
 def chat(token):
     if token not in salas:
@@ -234,9 +209,7 @@ def chat(token):
     historico = carregar_historico(token)
     return render_template('chat.html', token=token, nome_sala=salas[token]['nome'], historico=historico)
 
-
-# ===== WEBSOCKET EVENTS =====
-
+# ===== WEBSOCKET =====
 @socketio.on('entrar')
 def on_entrar(data):
     token = data.get('token')
@@ -246,24 +219,24 @@ def on_entrar(data):
         return
     join_room(token)
     usuarios[request.sid] = {'token': token, 'username': username}
-    historico = carregar_historico(token)
-    msg_sistema = {
+    msg = {
         'user': '⚡ Sistema',
         'text': f'{username} entrou na sala.',
         'timestamp': datetime.now().isoformat()
     }
-    historico.append(msg_sistema)
+    historico = carregar_historico(token)
+    historico.append(msg)
     salvar_historico(token, historico)
-    socketio.emit('mensagem', msg_sistema, room=token)
+    socketio.emit('mensagem', msg, room=token)
     log_acesso('ENTRAR_SALA', token, f'Usuário: {username}')
-
 
 @socketio.on('mensagem')
 def on_mensagem(data):
     token = data.get('token')
     if token not in salas:
         return
-    username = usuarios.get(request.sid, {}).get('username', 'Anônimo')[:50]
+    user = usuarios.get(request.sid, {})
+    username = user.get('username', 'Anônimo')[:50]
     texto = data.get('text', '')[:2000]
     msg = {
         'user': username,
@@ -275,27 +248,24 @@ def on_mensagem(data):
     salvar_historico(token, historico)
     socketio.emit('mensagem', msg, room=token)
 
-
 @socketio.on('disconnect')
 def on_disconnect():
     user = usuarios.pop(request.sid, None)
     if user:
         token = user['token']
         if token in salas:
-            msg_sistema = {
+            msg = {
                 'user': '⚡ Sistema',
                 'text': f'{user["username"]} saiu da sala.',
                 'timestamp': datetime.now().isoformat()
             }
             historico = carregar_historico(token)
-            historico.append(msg_sistema)
+            historico.append(msg)
             salvar_historico(token, historico)
-            socketio.emit('mensagem', msg_sistema, room=token)
+            socketio.emit('mensagem', msg, room=token)
             log_acesso('SAIR_SALA', token, f'Usuário: {user["username"]}')
 
-
-# ===== INÍCIO =====
+# ===== INICIAR =====
 if __name__ == '__main__':
-    print("🔥 PS.Chat Admin iniciado em http://0.0.0.0:5000")
-    print("ℹ️  Acesse /admin para administrar salas.")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
+    print("🔥 PS.Chat Admin v2.0 iniciado em http://0.0.0.0:5000")
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False)

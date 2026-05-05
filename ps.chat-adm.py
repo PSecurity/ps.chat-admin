@@ -8,7 +8,7 @@ from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
-# Configurações
+# ---------- Configurações ----------
 HISTORICO_DIR = 'historico'
 LOGS_DIR = 'logs'
 LOG_FILE = os.path.join(LOGS_DIR, 'acesso.log')
@@ -19,13 +19,12 @@ SENHA_PADRAO = 'PeekAdmin2025'
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading')
-
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 
-# Chave secreta persistente
+# ---------- Helpers ----------
 def carregar_ou_gerar_chave():
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE) as f: return f.read().strip()
@@ -77,7 +76,7 @@ def salvar_salas(salas_dict):
     with open(SALAS_FILE, 'w') as f: json.dump(salas_dict, f, indent=2)
 
 salas = carregar_salas()
-usuarios = {}
+usuarios = {}                    # sid -> {token, username, pubkey, sign_pubkey, admin}
 
 def admin_required(f):
     @wraps(f)
@@ -86,8 +85,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ========== ROTAS ==========
-
+# ---------- Rotas Admin ----------
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     erro = None
@@ -156,14 +154,14 @@ def admin_logs():
 @app.route('/admin/alterar_senha', methods=['POST'])
 @admin_required
 def alterar_senha():
-    senha_atual = request.form.get('senha_atual', '')
-    nova_senha = request.form.get('nova_senha', '')
-    if len(nova_senha) < 6:
+    atual = request.form.get('senha_atual', '')
+    nova = request.form.get('nova_senha', '')
+    if len(nova) < 6:
         return jsonify({'status': 'erro', 'mensagem': 'Nova senha deve ter pelo menos 6 caracteres.'})
-    if not check_password_hash(carregar_hash_admin(), senha_atual):
+    if not check_password_hash(carregar_hash_admin(), atual):
         log_acesso('FALHA_ALTERAR_SENHA')
         return jsonify({'status': 'erro', 'mensagem': 'Senha atual incorreta.'})
-    salvar_hash_admin(generate_password_hash(nova_senha))
+    salvar_hash_admin(generate_password_hash(nova))
     session.pop('admin_auth', None)
     log_acesso('SENHA_ALTERADA')
     return jsonify({'status': 'ok'})
@@ -179,8 +177,7 @@ def admin_gerar_qrcode(token):
     buf.seek(0)
     return Response(buf.getvalue(), mimetype='image/png')
 
-# ========== WEBSOCKET ==========
-
+# ---------- WebSocket ----------
 @socketio.on('entrar')
 def on_entrar(data):
     token = data.get('token')
@@ -202,12 +199,10 @@ def on_entrar(data):
 
     join_room(token)
 
-    # Verificar admin
     is_admin = False
-    if senha_admin:
-        if check_password_hash(carregar_hash_admin(), senha_admin):
-            is_admin = True
-            log_acesso('ADMIN_CLI', token, f'Usuário: {username} autenticado como admin')
+    if senha_admin and check_password_hash(carregar_hash_admin(), senha_admin):
+        is_admin = True
+        log_acesso('ADMIN_CLI', token, f'Usuário: {username}')
 
     usuarios[request.sid] = {
         'token': token,
@@ -239,6 +234,7 @@ def on_entrar(data):
             'sign_pubkey': sign_pubkey
         }, room=token)
 
+        # Enviar chaves de membros existentes ao novo usuário
         for sid, u in usuarios.items():
             if u['token'] == token and u['pubkey'] and u['username'] != username:
                 emit('chave_publica', {
@@ -252,23 +248,32 @@ def on_mensagem(data):
     token = data.get('token')
     if token not in salas: return
 
+    # Retransmite a mensagem para todos (criptografada com room key ou não)
     user_info = usuarios.get(request.sid, {})
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
-
     if user_info.get('admin'):
         data['admin'] = True
 
-    if 'text' in data and 'ciphertext' not in data:
+    # Evita salvar conteúdo criptografado no servidor
+    if 'ciphertext' not in data and 'text' in data:
         data['text'] = html.escape(data['text'][:2000])
-        data['type'] = 'chat'
-        data['timestamp'] = data.get('timestamp', datetime.now().isoformat())
-        if not data.get('ephemeral', False):
+        if not data.get('ephemeral'):
             hist = carregar_historico(token)
             hist.append(data)
             salvar_historico(token, hist)
 
     socketio.emit('mensagem', data, room=token)
+
+@socketio.on('room_key')
+def on_room_key(data):
+    # Roteia a chave de sala (criptografada) para o destinatário específico
+    token = data.get('token')
+    dest = data.get('destinatario')
+    for sid, u in usuarios.items():
+        if u['token'] == token and u['username'] == dest:
+            emit('room_key', data, room=sid)
+            break
 
 @socketio.on('sala_info')
 def on_sala_info(data):

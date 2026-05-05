@@ -82,7 +82,7 @@ def salvar_salas(salas_dict):
     with open(SALAS_FILE, 'w') as f: json.dump(salas_dict, f, indent=2)
 
 salas = carregar_salas()
-usuarios = {}  # sid: {token, username}
+usuarios = {}  # sid: {token, username, pubkey, sign_pubkey}
 
 # Decorator admin
 def admin_required(f):
@@ -189,44 +189,87 @@ def chat(token):
     return render_template('chat.html', token=token, nome_sala=salas[token]['nome'], historico=historico)
 
 # ===== WEBSOCKET =====
+
 @socketio.on('entrar')
 def on_entrar(data):
     token = data.get('token')
     username = data.get('username', 'Anônimo')[:50]
+    pubkey = data.get('pubkey')
+    sign_pubkey = data.get('sign_pubkey')
+
     if token not in salas:
         emit('erro', {'mensagem': 'Sala inválida.'})
         return
+
     join_room(token)
-    usuarios[request.sid] = {'token': token, 'username': username}
-    msg = {
+    usuarios[request.sid] = {
+        'token': token,
+        'username': username,
+        'pubkey': pubkey,
+        'sign_pubkey': sign_pubkey
+    }
+
+    # Mensagem de sistema sanitizada
+    msg_sistema = {
         'type': 'system',
         'user': '⚡ Sistema',
         'text': f'{html.escape(username)} entrou na sala.',
         'timestamp': datetime.now().isoformat()
     }
     hist = carregar_historico(token)
-    hist.append(msg)
+    hist.append(msg_sistema)
     salvar_historico(token, hist)
-    socketio.emit('mensagem', msg, room=token)
+    socketio.emit('mensagem', msg_sistema, room=token)
+
+    # Se o cliente enviou chaves, retransmitir para os outros membros
+    if pubkey and sign_pubkey:
+        socketio.emit('mensagem', {
+            'user': username,
+            'pubkey': pubkey,
+            'sign_pubkey': sign_pubkey
+        }, room=token)
+
     log_acesso('ENTRAR_SALA', token, f'Usuário: {username}')
 
 @socketio.on('mensagem')
 def on_mensagem(data):
     token = data.get('token')
     if token not in salas: return
-    user = usuarios.get(request.sid, {})
-    username = user.get('username', 'Anônimo')[:50]
-    texto = data.get('text', '')[:2000]
-    msg = {
-        'type': 'chat',
-        'user': html.escape(username),
-        'text': html.escape(texto),
-        'timestamp': data.get('timestamp', datetime.now().isoformat())
-    }
-    hist = carregar_historico(token)
-    hist.append(msg)
-    salvar_historico(token, hist)
-    socketio.emit('mensagem', msg, room=token)
+
+    # Repassa a mensagem exatamente como recebida (criptografada ou texto plano)
+    # Apenas adiciona o username do remetente se não presente
+    user_info = usuarios.get(request.sid, {})
+    if 'user' not in data:
+        data['user'] = user_info.get('username', 'Anônimo')
+
+    # Se for mensagem em texto plano (chat web/admin), sanitizar
+    if 'text' in data and 'ciphertext' not in data:
+        data['text'] = html.escape(data['text'][:2000])
+        data['type'] = 'chat'
+        data['timestamp'] = data.get('timestamp', datetime.now().isoformat())
+
+    # Salvar no histórico apenas mensagens de texto plano (as criptografadas não devem ser armazenadas em claro)
+    if 'text' in data:
+        hist = carregar_historico(token)
+        hist.append(data)
+        salvar_historico(token, hist)
+
+    socketio.emit('mensagem', data, room=token)
+
+@socketio.on('sala_info')
+def on_sala_info(data):
+    token = data.get('token')
+    if token not in salas:
+        emit('erro', {'mensagem': 'Sala inválida.'})
+        return
+    members = []
+    for sid, u in usuarios.items():
+        if u.get('token') == token:
+            members.append({
+                'username': u['username'],
+                'has_pubkey': bool(u.get('pubkey'))
+            })
+    emit('sala_info', {'members': members})
 
 @socketio.on('disconnect')
 def on_disconnect():
@@ -234,16 +277,16 @@ def on_disconnect():
     if user:
         token = user['token']
         if token in salas:
-            msg = {
+            msg_sistema = {
                 'type': 'system',
                 'user': '⚡ Sistema',
                 'text': f'{user["username"]} saiu da sala.',
                 'timestamp': datetime.now().isoformat()
             }
             hist = carregar_historico(token)
-            hist.append(msg)
+            hist.append(msg_sistema)
             salvar_historico(token, hist)
-            socketio.emit('mensagem', msg, room=token)
+            socketio.emit('mensagem', msg_sistema, room=token)
             log_acesso('SAIR_SALA', token, f'Usuário: {user["username"]}')
 
 # ===== INÍCIO =====

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚫 Nomes Bloqueados — PS.Chat Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0010; --panel: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --text: #d8b4fe; --dim: #7c3aed88; --accent: #c084fc; --red: #f87171;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  header {
+    width:100%; padding:10px 20px; border-bottom:1px solid var(--border);
+    background: var(--panel); display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo {
+    font-family:'Orbitron', monospace; font-weight:900; font-size:1rem;
+    color: var(--accent); text-shadow:0 0 6px var(--glow); letter-spacing:1px;
+  }
+  .container { width:100%; max-width:600px; margin:20px; }
+  .panel {
+    background: var(--panel); border:1px solid var(--border);
+    padding:1.2rem; box-shadow:0 0 10px #6b00c820;
+  }
+  label { display:block; font-size:0.7rem; color:var(--dim); margin-bottom:4px; }
+  textarea {
+    width:100%; padding:6px; background:var(--bg); border:1px solid var(--border);
+    color: var(--text); font-family:inherit; font-size:0.8rem; outline:none;
+    margin-bottom:10px; resize:vertical;
+  }
+  .btn {
+    font-family:inherit; font-size:0.7rem; padding:4px 10px; border:1px solid var(--border);
+    background:transparent; color: var(--text); cursor:pointer; transition:0.2s;
+    letter-spacing:1px; text-decoration:none; display:inline-block;
+  }
+  .btn:hover { border-color: var(--glow); color:#fff; box-shadow:0 0 6px var(--glow); }
+  .current-list { font-size:0.75rem; margin-top:10px; }
+  .current-list span { background:var(--border); padding:2px 6px; margin:2px; display:inline-block; }
+  a { color: var(--accent); text-decoration:none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🚫 PS.<span>CHAT ADMIN</span></div>
+  <a href="/admin" class="btn">← VOLTAR</a>
+</header>
+<div class="container">
+  <div class="panel">
+    <h2 style="font-family:'Orbitron', monospace; font-size:0.8rem; color:var(--accent); margin-bottom:10px;">NOMES BLOQUEADOS</h2>
+    <form method="POST">
+      <label for="nomes">Lista de nomes (separados por vírgula)</label>
+      <textarea id="nomes" name="nomes" rows="4">{% for nome in nomes %}{{ nome }},{% endfor %}</textarea>
+      <button type="submit" class="btn">SALVAR</button>
+    </form>
+    <div class="current-list">
+      {% for nome in nomes %}
+      <span>{{ nome }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

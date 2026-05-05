@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, json, secrets, webbrowser, html
+import os, json, secrets, webbrowser, html, time
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -12,10 +12,15 @@ from functools import wraps
 HISTORICO_DIR = 'historico'
 LOGS_DIR = 'logs'
 LOG_FILE = os.path.join(LOGS_DIR, 'acesso.log')
+MODLOG_FILE = 'modlog.json'
+BLOCKED_NAMES_FILE = 'blocked_names.json'
 ADMIN_HASH_FILE = 'admin.hash'
 SECRET_FILE = 'secret.key'
+SECRET_QUESTION_FILE = 'secret_question.json'
 SALAS_FILE = 'salas.json'
 SENHA_PADRAO = 'PeekAdmin2025'
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_BLOCK_TIME = 600  # 10 minutos
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading')
@@ -24,7 +29,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 
-# ---------- Helpers (mesmos das versões anteriores) ----------
+# ---------- Helpers ----------
 def carregar_ou_gerar_chave():
     if os.path.exists(SECRET_FILE):
         with open(SECRET_FILE) as f: return f.read().strip()
@@ -48,6 +53,59 @@ def salvar_hash_admin(novo_hash):
     with open(ADMIN_HASH_FILE, 'w') as f: f.write(novo_hash)
     try: os.chmod(ADMIN_HASH_FILE, 0o600)
     except: pass
+
+def salvar_modlog(acao, token, admin, target, detalhe=""):
+    entrada = {
+        "timestamp": datetime.now().isoformat(),
+        "acao": acao,
+        "token": token,
+        "admin": admin,
+        "target": target,
+        "detalhe": detalhe
+    }
+    log_data = []
+    if os.path.exists(MODLOG_FILE):
+        with open(MODLOG_FILE) as f: log_data = json.load(f)
+    log_data.append(entrada)
+    # Mantém últimos 200 registros
+    if len(log_data) > 200: log_data = log_data[-200:]
+    with open(MODLOG_FILE, 'w') as f: json.dump(log_data, f, indent=2)
+
+def carregar_modlog():
+    if os.path.exists(MODLOG_FILE):
+        with open(MODLOG_FILE) as f: return json.load(f)
+    return []
+
+def carregar_blocked_names():
+    if os.path.exists(BLOCKED_NAMES_FILE):
+        with open(BLOCKED_NAMES_FILE) as f: return json.load(f)
+    return []
+
+def salvar_blocked_names(names_list):
+    with open(BLOCKED_NAMES_FILE, 'w') as f: json.dump(names_list, f, indent=2)
+
+# Rate limiting
+login_attempts = {}  # ip -> [tentativas, timestamp_primeira_tentativa]
+
+def registrar_tentativa(ip):
+    agora = time.time()
+    if ip in login_attempts:
+        tentativas, inicio = login_attempts[ip]
+        if agora - inicio > LOGIN_BLOCK_TIME:
+            login_attempts[ip] = [1, agora]
+        else:
+            tentativas += 1
+            if tentativas > MAX_LOGIN_ATTEMPTS:
+                return False   # bloqueado
+            login_attempts[ip] = [tentativas, inicio]
+    else:
+        login_attempts[ip] = [1, agora]
+    return True
+
+def ip_bloqueado(ip):
+    if ip not in login_attempts: return False
+    tentativas, inicio = login_attempts[ip]
+    return tentativas > MAX_LOGIN_ATTEMPTS and (time.time() - inicio) < LOGIN_BLOCK_TIME
 
 def log_acesso(acao, token="", detalhe=""):
     agora = datetime.now().isoformat()
@@ -76,7 +134,9 @@ def salvar_salas(salas_dict):
     with open(SALAS_FILE, 'w') as f: json.dump(salas_dict, f, indent=2)
 
 salas = carregar_salas()
-usuarios = {}                    # sid -> {token, username, pubkey, sign_pubkey, admin, moderator}
+usuarios = {}                    # sid -> {token, username, pubkey, sign_pubkey, admin, moderator, muted, join_time}
+contador_mensagens = {}          # token -> int
+ultima_rotacao = {}              # token -> timestamp
 
 def admin_required(f):
     @wraps(f)
@@ -89,17 +149,58 @@ def admin_required(f):
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     erro = None
+    ip = request.remote_addr
     if request.method == 'POST':
+        if ip_bloqueado(ip):
+            erro = 'IP bloqueado por excesso de tentativas. Tente novamente mais tarde.'
+            return render_template('admin_login.html', erro=erro)
+
         senha = request.form.get('senha', '')
         if check_password_hash(carregar_hash_admin(), senha):
+            # Pergunta de segurança se configurada
+            if os.path.exists(SECRET_QUESTION_FILE):
+                with open(SECRET_QUESTION_FILE) as f: qdata = json.load(f)
+                resposta = request.form.get('resposta', '')
+                if not resposta or not check_password_hash(qdata['hash_resposta'], resposta):
+                    login_attempts.pop(ip, None)
+                    return render_template('admin_login.html', erro='Resposta de segurança incorreta.', pergunta=qdata['pergunta'])
             session['admin_auth'] = True
             session.permanent = True
+            login_attempts.pop(ip, None)  # limpa tentativas ao sucesso
             log_acesso('LOGIN_ADMIN')
             return redirect(url_for('admin_dashboard'))
         else:
-            log_acesso('FALHA_LOGIN_ADMIN')
-            erro = 'Senha incorreta.'
-    return render_template('admin_login.html', erro=erro)
+            if not registrar_tentativa(ip):
+                erro = 'IP bloqueado por excesso de tentativas.'
+            else:
+                erro = 'Senha incorreta.'
+    # Recupera pergunta se existir
+    pergunta = None
+    if os.path.exists(SECRET_QUESTION_FILE):
+        with open(SECRET_QUESTION_FILE) as f:
+            pergunta = json.load(f)['pergunta']
+    return render_template('admin_login.html', erro=erro, pergunta=pergunta)
+
+@app.route('/admin/setup_question', methods=['POST'])
+@admin_required
+def setup_question():
+    pergunta = request.form.get('pergunta', '').strip()
+    resposta = request.form.get('resposta', '').strip()
+    if not pergunta or not resposta:
+        return jsonify({'status':'erro','mensagem':'Preencha todos os campos.'})
+    qdata = {
+        'pergunta': pergunta,
+        'hash_resposta': generate_password_hash(resposta)
+    }
+    with open(SECRET_QUESTION_FILE, 'w') as f: json.dump(qdata, f, indent=2)
+    return jsonify({'status':'ok'})
+
+@app.route('/admin/remove_question', methods=['POST'])
+@admin_required
+def remove_question():
+    if os.path.exists(SECRET_QUESTION_FILE):
+        os.remove(SECRET_QUESTION_FILE)
+    return jsonify({'status':'ok'})
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -151,6 +252,24 @@ def admin_logs():
         return render_template('admin_logs.html', logs=linhas)
     return render_template('admin_logs.html', logs=[])
 
+@app.route('/admin/modlog')
+@admin_required
+def admin_modlog():
+    logs = carregar_modlog()
+    logs.reverse()
+    return render_template('admin_modlog.html', logs=logs[:200])
+
+@app.route('/admin/blocked_names', methods=['GET','POST'])
+@admin_required
+def admin_blocked_names():
+    if request.method == 'POST':
+        lista = request.form.get('nomes', '').split(',')
+        lista = [n.strip() for n in lista if n.strip()]
+        salvar_blocked_names(lista)
+        return redirect(url_for('admin_blocked_names'))
+    nomes = carregar_blocked_names()
+    return render_template('admin_blocked_names.html', nomes=nomes)
+
 @app.route('/admin/alterar_senha', methods=['POST'])
 @admin_required
 def alterar_senha():
@@ -177,12 +296,25 @@ def admin_gerar_qrcode(token):
     buf.seek(0)
     return Response(buf.getvalue(), mimetype='image/png')
 
-# ---------- Nova rota para gerenciar sala ----------
+@app.route('/admin/invite/<token>')
+@admin_required
+def admin_invite(token):
+    if token not in salas: return "Sala não encontrada", 404
+    # Gera link com token e senha embutidos (se houver)
+    sala = salas[token]
+    base = request.host_url.rstrip('/')
+    link = f"{base}/chat?token={token}"
+    if 'senha_hash' in sala:
+        # Não podemos expor a senha original; convite é apenas token.
+        # Podemos permitir que o admin configure uma senha temporária no futuro.
+        pass
+    return render_template('admin_invite.html', link=link, token=token)
+
+# ---------- Gerenciamento de sala ----------
 @app.route('/admin/sala/<token>')
 @admin_required
 def admin_sala(token):
     if token not in salas: return "Sala não encontrada", 404
-    # Coleta membros da sala
     membros = []
     for sid, u in usuarios.items():
         if u.get('token') == token:
@@ -190,6 +322,7 @@ def admin_sala(token):
                 'username': u['username'],
                 'admin': u.get('admin', False),
                 'moderator': u.get('moderator', False),
+                'muted': u.get('muted', False),
                 'has_pubkey': bool(u.get('pubkey'))
             })
     return render_template('admin_sala.html', token=token, nome_sala=salas[token]['nome'], membros=membros)
@@ -200,10 +333,8 @@ def admin_sala_acao(token):
     if token not in salas: return jsonify({'status': 'erro', 'mensagem': 'Sala inválida'}), 404
     acao = request.form.get('acao')
     target = request.form.get('username')
-    if not target or not acao:
-        return jsonify({'status': 'erro', 'mensagem': 'Parâmetros insuficientes'}), 400
+    if not target or not acao: return jsonify({'status': 'erro', 'mensagem': 'Parâmetros insuficientes'}), 400
 
-    # Encontra o sid do usuário alvo
     target_sid = None
     for sid, u in usuarios.items():
         if u.get('token') == token and u['username'] == target:
@@ -213,32 +344,41 @@ def admin_sala_acao(token):
         return jsonify({'status': 'erro', 'mensagem': 'Usuário não encontrado'}), 404
 
     if acao == 'kick':
-        # Remove o usuário da sala
-        socketio.emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
+        emit('kick', {'mensagem': 'Você foi removido da sala.'}, room=target_sid)
         leave_room(target_sid, token)
         usuarios.pop(target_sid, None)
-        log_acesso('KICK', token, f'Usuário {target} removido')
+        salvar_modlog('kick', token, 'admin_web', target)
         return jsonify({'status': 'ok'})
     elif acao == 'promote':
         if target_sid in usuarios:
             usuarios[target_sid]['moderator'] = True
-            emit('promoted', {'status': 'moderator'}, room=target_sid)
-            log_acesso('PROMOTE', token, f'{target} promovido a moderador')
+            emit('promoted', {}, room=target_sid)
+            salvar_modlog('promote', token, 'admin_web', target)
             return jsonify({'status': 'ok'})
     elif acao == 'demote':
         if target_sid in usuarios:
             usuarios[target_sid]['moderator'] = False
             emit('demoted', {}, room=target_sid)
-            log_acesso('DEMOTE', token, f'{target} rebaixado')
+            salvar_modlog('demote', token, 'admin_web', target)
             return jsonify({'status': 'ok'})
     elif acao == 'block':
-        # Bloquear usuário (remover e impedir reentrada com mesmo nome por X minutos)
-        # Simples: apenas remove agora
-        socketio.emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
+        emit('kick', {'mensagem': 'Você foi bloqueado da sala.'}, room=target_sid)
         leave_room(target_sid, token)
         usuarios.pop(target_sid, None)
-        log_acesso('BLOCK', token, f'Usuário {target} bloqueado')
+        salvar_modlog('block', token, 'admin_web', target)
         return jsonify({'status': 'ok'})
+    elif acao == 'mute':
+        if target_sid in usuarios:
+            usuarios[target_sid]['muted'] = True
+            emit('muted', {}, room=target_sid)
+            salvar_modlog('mute', token, 'admin_web', target)
+            return jsonify({'status': 'ok'})
+    elif acao == 'unmute':
+        if target_sid in usuarios:
+            usuarios[target_sid]['muted'] = False
+            emit('unmuted', {}, room=target_sid)
+            salvar_modlog('unmute', token, 'admin_web', target)
+            return jsonify({'status': 'ok'})
     return jsonify({'status': 'erro', 'mensagem': 'Ação desconhecida'}), 400
 
 # ---------- WebSocket ----------
@@ -253,6 +393,12 @@ def on_entrar(data):
 
     if token not in salas:
         emit('erro', {'mensagem': 'Sala inválida.'})
+        return
+
+    # Verifica blacklist
+    blocked = carregar_blocked_names()
+    if username in blocked:
+        emit('erro', {'mensagem': 'Nome de usuário bloqueado.'})
         return
 
     sala = salas[token]
@@ -274,7 +420,9 @@ def on_entrar(data):
         'pubkey': pubkey,
         'sign_pubkey': sign_pubkey,
         'admin': is_admin,
-        'moderator': False
+        'moderator': False,
+        'muted': False,
+        'join_time': time.time()
     }
 
     prefix = "👑 Admin " if is_admin else ""
@@ -313,6 +461,10 @@ def on_mensagem(data):
     if token not in salas: return
 
     user_info = usuarios.get(request.sid, {})
+    if user_info.get('muted', False):
+        emit('erro', {'mensagem': 'Você está silenciado.'})
+        return
+
     if 'user' not in data:
         data['user'] = user_info.get('username', 'Anônimo')
     if user_info.get('admin'):
@@ -328,6 +480,19 @@ def on_mensagem(data):
             salvar_historico(token, hist)
 
     socketio.emit('mensagem', data, room=token)
+
+    # Rotação automática da chave de sala
+    if 'room_encrypted' in data:
+        contador = contador_mensagens.get(token, 0) + 1
+        contador_mensagens[token] = contador
+        agora = time.time()
+        if token not in ultima_rotacao or (agora - ultima_rotacao[token] > 600 or contador % 50 == 0):
+            ultima_rotacao[token] = agora
+            # Pede ao admin para gerar nova chave
+            for sid, u in usuarios.items():
+                if u.get('token') == token and u.get('admin'):
+                    emit('rotate_key', {}, room=sid)
+                    break
 
 @socketio.on('room_key')
 def on_room_key(data):
@@ -349,7 +514,8 @@ def on_sala_info(data):
                 'username': u['username'],
                 'has_pubkey': bool(u.get('pubkey')),
                 'admin': u.get('admin', False),
-                'moderator': u.get('moderator', False)
+                'moderator': u.get('moderator', False),
+                'muted': u.get('muted', False)
             })
     emit('sala_info', {'members': members})
 
@@ -369,25 +535,53 @@ def on_solicitar_chave(data):
 
 @socketio.on('kick_user')
 def on_kick_user(data):
-    """Admin ou moderador remove um usuário da sala."""
     token = data.get('token')
     target = data.get('username')
     user_info = usuarios.get(request.sid, {})
     if not user_info.get('admin') and not user_info.get('moderator'):
         emit('erro', {'mensagem': 'Sem permissão.'})
         return
-    if token not in salas:
-        return
+    if token not in salas: return
     target_sid = None
     for sid, u in usuarios.items():
         if u.get('token') == token and u['username'] == target:
             target_sid = sid
             break
     if target_sid:
-        socketio.emit('kick', {'mensagem': f'Você foi removido por {user_info["username"]}.'}, room=target_sid)
+        emit('kick', {'mensagem': f'Você foi removido por {user_info["username"]}.'}, room=target_sid)
         leave_room(target_sid, token)
         usuarios.pop(target_sid, None)
-        log_acesso('KICK_CMD', token, f'{target} removido por {user_info["username"]}')
+        salvar_modlog('kick', token, user_info['username'], target)
+
+@socketio.on('mute_user')
+def on_mute_user(data):
+    token = data.get('token')
+    target = data.get('username')
+    user_info = usuarios.get(request.sid, {})
+    if not user_info.get('admin') and not user_info.get('moderator'):
+        emit('erro', {'mensagem': 'Sem permissão.'})
+        return
+    for sid, u in usuarios.items():
+        if u.get('token') == token and u['username'] == target:
+            usuarios[sid]['muted'] = True
+            emit('muted', {}, room=sid)
+            salvar_modlog('mute', token, user_info['username'], target)
+            break
+
+@socketio.on('unmute_user')
+def on_unmute_user(data):
+    token = data.get('token')
+    target = data.get('username')
+    user_info = usuarios.get(request.sid, {})
+    if not user_info.get('admin') and not user_info.get('moderator'):
+        emit('erro', {'mensagem': 'Sem permissão.'})
+        return
+    for sid, u in usuarios.items():
+        if u.get('token') == token and u['username'] == target:
+            usuarios[sid]['muted'] = False
+            emit('unmuted', {}, room=sid)
+            salvar_modlog('unmute', token, user_info['username'], target)
+            break
 
 @socketio.on('disconnect')
 def on_disconnect():

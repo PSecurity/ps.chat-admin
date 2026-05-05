@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, json, secrets, webbrowser
-from datetime import datetime
+import os, json, secrets, webbrowser, html
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -19,6 +19,9 @@ SENHA_PADRAO = 'PeekAdmin2025'
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading')
+
+# Tempo de sessão do admin (30 minutos)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
@@ -55,7 +58,7 @@ def log_acesso(acao, token="", detalhe=""):
     ip = request.remote_addr
     with open(LOG_FILE, 'a') as f: f.write(f"{agora} | {acao} | {ip} | {token} | {detalhe}\n")
 
-# Histórico
+# Histórico com limite de 200 mensagens
 def carregar_historico(token):
     caminho = os.path.join(HISTORICO_DIR, f'sala_{token}.json')
     if os.path.exists(caminho):
@@ -63,6 +66,8 @@ def carregar_historico(token):
     return []
 
 def salvar_historico(token, hist):
+    if len(hist) > 200:
+        hist = hist[-200:]
     with open(os.path.join(HISTORICO_DIR, f'sala_{token}.json'), 'w') as f:
         json.dump(hist, f, indent=2)
 
@@ -96,6 +101,7 @@ def admin_login():
         senha = request.form.get('senha', '')
         if check_password_hash(carregar_hash_admin(), senha):
             session['admin_auth'] = True
+            session.permanent = True          # Timeout de sessão
             log_acesso('LOGIN_ADMIN')
             return redirect(url_for('admin_dashboard'))
         else:
@@ -193,8 +199,9 @@ def on_entrar(data):
     join_room(token)
     usuarios[request.sid] = {'token': token, 'username': username}
     msg = {
+        'type': 'system',
         'user': '⚡ Sistema',
-        'text': f'{username} entrou na sala.',
+        'text': f'{html.escape(username)} entrou na sala.',
         'timestamp': datetime.now().isoformat()
     }
     hist = carregar_historico(token)
@@ -211,8 +218,9 @@ def on_mensagem(data):
     username = user.get('username', 'Anônimo')[:50]
     texto = data.get('text', '')[:2000]
     msg = {
-        'user': username,
-        'text': texto,
+        'type': 'chat',
+        'user': html.escape(username),
+        'text': html.escape(texto),
         'timestamp': data.get('timestamp', datetime.now().isoformat())
     }
     hist = carregar_historico(token)
@@ -227,6 +235,7 @@ def on_disconnect():
         token = user['token']
         if token in salas:
             msg = {
+                'type': 'system',
                 'user': '⚡ Sistema',
                 'text': f'{user["username"]} saiu da sala.',
                 'timestamp': datetime.now().isoformat()

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔒 Segurança — PS.Chat Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0a0010; --panel: #0f0018; --border: #6b00c8; --glow: #a855f7;
+    --text: #d8b4fe; --accent: #c084fc; --red: #f87171; --dim: #7c3aed88; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace;
+         min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  header { width:100%; padding:10px 20px; border-bottom:1px solid var(--border);
+           background: var(--panel); display:flex; align-items:center; justify-content:space-between; }
+  .logo { font-family:'Orbitron', monospace; font-weight:900; font-size:1rem; color: var(--accent);
+          text-shadow:0 0 6px var(--glow); letter-spacing:1px; }
+  .container { max-width:500px; margin:20px; width:100%; }
+  .panel { background: var(--panel); border:1px solid var(--border); padding:1.2rem; }
+  label { display:block; font-size:0.7rem; color: var(--dim); margin-bottom:4px; }
+  input[type="text"], input[type="password"] { width:100%; padding:8px; background: var(--bg);
+    border:1px solid var(--border); color: var(--text); font-family:inherit; font-size:0.8rem; margin-bottom:10px; }
+  .btn { font-family:inherit; font-size:0.7rem; padding:6px 12px; border:1px solid var(--border);
+         background:transparent; color: var(--text); cursor:pointer; transition:0.2s; letter-spacing:1px; }
+  .btn:hover { border-color: var(--glow); color:#fff; }
+  .danger { color: var(--red); border-color: var(--red); }
+  a { color: var(--accent); text-decoration:none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🔒 PS.<span>CHAT ADMIN</span></div>
+  <a href="/admin" class="btn">← VOLTAR</a>
+</header>
+<div class="container">
+  <div class="panel">
+    <h2 style="font-family:'Orbitron',monospace;color:var(--accent);margin-bottom:1rem;">PERGUNTA DE SEGURANÇA</h2>
+    {% if pergunta_atual %}
+      <p style="font-size:0.75rem; margin-bottom:10px;">Pergunta atual: <strong>{{ pergunta_atual }}</strong></p>
+      <form method="POST" action="/admin/remove_question" style="display:inline;">
+        <button type="submit" class="btn danger">REMOVER PERGUNTA</button>
+      </form>
+      <hr style="border-color:var(--border); margin:16px 0;">
+    {% endif %}
+    <form method="POST">
+      <label for="pergunta">Nova pergunta</label>
+      <input type="text" id="pergunta" name="pergunta" placeholder="Ex: Nome do primeiro pet">
+      <label for="resposta">Resposta</label>
+      <input type="text" id="resposta" name="resposta">
+      <button type="submit" class="btn">SALVAR</button>
+    </form>
+    {% if erro %}<p style="color:var(--red); font-size:0.7rem;">{{ erro }}</p>{% endif %}
+  </div>
+</div>
+</body>
+</html>
